@@ -14,7 +14,7 @@ pub enum DbTypes {
 pub enum Attributes {
     PK,
     AUTO_I,
-    CONNECT(String)
+    CONNECT(&'static str)
 }
 
 pub struct user {

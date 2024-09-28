@@ -1,6 +1,6 @@
 use MyTrait::MyTrait2;
 use p_macros::table;
-use Db_shit::{user};
+use Db_shit::*;
 
 #[table("users")]
 struct Users {

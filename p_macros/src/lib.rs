@@ -77,12 +77,12 @@ fn allow_at2(input: &Attribute, field_name: Ident) -> Result<((proc_macro2::Toke
         Ok(match input.meta.require_list(){
             Ok(list) => {
                 quote!{
-                    #list
+                    Attributes::#list
                 }
             }
             Err(_) => {
                 quote!{
-                    #input_ident
+                    Attributes::#input_ident
                 }
             }
         })
