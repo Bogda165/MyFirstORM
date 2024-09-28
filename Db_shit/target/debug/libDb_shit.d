@@ -1,0 +1,1 @@
+/Users/user/RustroverProjects/SQLiteWrapper/Db_shit/target/debug/libDb_shit.rlib: /Users/user/RustroverProjects/SQLiteWrapper/Db_shit/src/lib.rs /Users/user/RustroverProjects/SQLiteWrapper/macros_l/src/lib.rs
