@@ -1,11 +1,32 @@
 extern crate proc_macro;
 use proc_macro::{TokenStream};
-use std::collections::HashMap;
+use std::any::{type_name, type_name_of_val};
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use proc_macro2::{Ident, Span};
 use quote::{format_ident, quote, ToTokens};
-use syn::{parse, parse_macro_input, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, ItemFn, ItemStruct, LitStr};
+use syn::{parse, parse_macro_input, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, ItemFn, ItemStruct, LitStr, Type};
 use syn::token::Token;
 use Db_shit::*;
+
+#[derive(Clone)]
+struct MetaData <'a>{
+    attr_type: HashMap<&'a str, &'a str>,
+}
+impl<'a> MetaData<'a> {
+    pub fn default() -> MetaData<'a> {
+        let mut set = HashMap::new();
+        set.insert("INTEGER",  "INTEGER");
+        set.insert( "FLOAT",  "REAL");
+        set.insert( "TEXT",  "TEXT");
+        set.insert( "PK",  "PRIMARY KEY");
+        set.insert( "AUTO_I",  "AUTOINCREMENT");
+        set.insert( "CONNECT", "  ");
+        MetaData {
+            attr_type: set
+        }
+    }
+}
 
 #[proc_macro_derive(MyTrait2)]
 pub fn my_trait_derive(input: TokenStream) -> TokenStream {
@@ -48,16 +69,17 @@ pub fn log_exec_time(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 //allow attributes or types
 
-fn allow_at(input: &String) -> Result<((proc_macro2::TokenStream)), (())>
+fn is_in_allowed_attrs(input: &Ident) -> Result<((proc_macro2::TokenStream)), (())>
 {
+    let input_name = input.to_string();
     let attrs = Attributes::get_variants();
     let types = DbTypes::get_variants();
 
-    if attrs.contains(input) {
+    if attrs.contains(&input_name) {
         Ok(quote! {
             Attributes
         })
-    }else if types.contains(input) {
+    }else if types.contains(&input_name) {
         Ok(quote!{
             DbTypes
         })
@@ -67,7 +89,7 @@ fn allow_at(input: &String) -> Result<((proc_macro2::TokenStream)), (())>
 
 }
 
-fn allow_at2(input: &Attribute, field_name: Ident) -> Result<((proc_macro2::TokenStream)), (())> {
+fn create_attr_with_type(input: &Attribute, field_name: Ident) -> Result<((proc_macro2::TokenStream)), (())> {
     let input_s = input.meta.path().get_ident().unwrap().to_string();
     let attrs = Attributes::get_variants();
     let types = DbTypes::get_variants();
@@ -93,12 +115,18 @@ fn allow_at2(input: &Attribute, field_name: Ident) -> Result<((proc_macro2::Toke
     } else {
         return Err(())
     }
+}
 
+fn to_string<'a, 'b>(attr: &'a Ident, meta_data: MetaData<'b>) -> &'b str {
+    let attr_name = &*attr.to_string();
+
+    meta_data.attr_type.get(attr_name).unwrap()
 }
 
 #[proc_macro_attribute]
 pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
     dbg!("Start");
+    let meta_data = MetaData::default();
 
     let table_name = parse_macro_input!(_attr as LitStr);
     let table_name_ident = Ident::new(&table_name.value(), table_name.span());
@@ -107,6 +135,7 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let table_struct;
     let impl_table;
+    let impl_table_shadow;
 
     let data = match input.data {
         Data::Struct(data) => {
@@ -129,7 +158,7 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let fields = construct_table_s.iter().map(|field| {
                 let name = field.0;
                 let attrs = field.1.iter().map(|attr| {
-                    match allow_at(&attr.meta.path().get_ident().unwrap().to_string()) {
+                    match is_in_allowed_attrs(&attr.meta.path().get_ident().unwrap()) {
                         Ok(attr) => {attr}
                         Err(_) => {
                             panic!("Not allowed type or attr")
@@ -153,7 +182,7 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let fields = construct_table_s.iter().map(|field|{
                 let name = field.0;
                 let attrs = field.1.iter().map(|attr| {
-                    match allow_at2(attr, name.clone()) {
+                    match create_attr_with_type(attr, name.clone()) {
                         Ok(attr) => {attr}
                         Err(_) => {
                             panic!("Not allowed type or attr")
@@ -171,7 +200,75 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             )
         };
+        //create an impl for table
+        impl_table_shadow = {
+            let create = {
+                let mut query = String::from(format!("CREATE TABLE {} (\n", table_name_ident.to_string()));
+                construct_table_s.iter().for_each(|field| {
+                    query += &field.0.to_string();
+                    query += "\t";
+                    field.1.iter().for_each(|attr| {
+                        query += to_string(attr.meta.path().get_ident().unwrap(), meta_data.clone());
+                        query += " "
+                    });
+                    query += ",\n"
+                });
+                query.pop();
+                query.pop();
+                query += "\n);";
+                query
+            };
 
+            let mut size = 0;
+
+            let tuple = {
+                let fields_vals = construct_table_s.iter().map(|field| {
+                    size += 1;
+                    let name = field.0;
+                    let mut res = quote!{#name};
+                    if field.1.len() != 1 {
+                        res = quote! {#name.0};
+                    }
+
+                    quote! {
+                        #res
+                    }
+                });
+
+                quote! {
+                     (#((self.#fields_vals).for_insert(10)), *)
+                }
+                //let mut query = String::from(format!("INSERT INTO {} ({}) VALUES \n", table_name_ident.to_string(), fields_names));
+            };
+
+            let paren = {
+
+                let strings = (0..size).into_iter().map(|val| {
+                    quote! {
+                            String
+                        }
+                });
+
+                quote! {
+                    (#(#strings), *)
+                }
+
+            };
+
+            quote! {
+                impl #table_name_ident{
+                    pub fn create(&self) -> String{
+                        #create.to_string()
+                    }
+
+                    pub fn insert(&self) -> #paren {
+                        //INSERT INTO .... VALUES
+                        //(self.id.for_insert(), self.text.for_insert())
+                        #tuple
+                    }
+                }
+            }
+        };
     };
 
     let fields = match data.fields {
@@ -188,23 +285,29 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    //connect
     TokenStream::from(quote!{
         pub mod #table_name_ident{
             use Db_shit::*;
             #[derive(Debug)]
             #table_struct
+            #impl_table_shadow
 
             pub struct #name
             {
                 #fields
             }
 
-            impl #name {
-                pub fn get_table_name() -> String {
+            impl Entity for #name
+            {
+                fn get_table_name() -> String {
                     #table_name.to_string()
                 }
 
-                pub fn get_table(&self) -> #table_name_ident {
+            }
+
+            impl #name {
+                pub fn get_table2(&self) -> #table_name_ident {
                     #impl_table
                 }
             }
@@ -226,5 +329,3 @@ Common Attributes:
 9.	ON CONFLICT: Specifies conflict-handling behavior.
 
 */
-
-
