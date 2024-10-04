@@ -1,0 +1,7 @@
+[package]
+name = "EntityRepo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+Db_shit = {path = "../Db_shit"}

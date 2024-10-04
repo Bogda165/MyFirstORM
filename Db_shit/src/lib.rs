@@ -1,6 +1,7 @@
 use std::error::Error;
 use macros_l::*;
-use rusqlite::{Connection};
+use rusqlite::{Connection, ToSql};
+use rusqlite::types::ToSqlOutput;
 use crate::Attributes::{AUTO_I, PK};
 use crate::DbTypes::{INTEGER, TEXT, FLOAT};
 
@@ -34,6 +35,9 @@ impl DbTypes {
     pub fn for_insert(&self, num: i32) -> String {
         match self {
             INTEGER(val) => {
+                if *val == -1 {
+                    return "NULL".to_string();
+                }
                 val.to_string()
             }
             FLOAT(val) => {
@@ -58,6 +62,17 @@ impl INSERTABLE for DbTypes {
             TEXT(str) => {
                 str.clone()
             }
+        }
+    }
+}
+
+
+impl ToSql for DbTypes {
+    fn to_sql(&self) -> Result<ToSqlOutput<'_>, rusqlite::Error> {
+        match self {
+            DbTypes::INTEGER(i) => {Ok(ToSqlOutput::from(*i))},
+            DbTypes::FLOAT(f) => Ok(ToSqlOutput::from(*f)),
+            DbTypes::TEXT(s) => Ok(ToSqlOutput::from(s.clone())),
         }
     }
 }
@@ -128,18 +143,6 @@ pub trait TableTrait {
 
     INSERT INTO person (name, age) VALUES (?1, ?2)
  */
-pub trait Repo<T>
-where
-    T: TableTrait
-{
-    /*
-    fn get_connection(&self) -> Connection;
-    fn get_list(&self) -> Vec<T>;
-    fn create_table(&self) -> Result<(), ()> {
-
-    }
-     */
-}
 
 pub trait Entity
 {

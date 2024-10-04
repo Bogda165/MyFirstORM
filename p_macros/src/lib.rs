@@ -9,6 +9,15 @@ use syn::{parse, parse_macro_input, Attribute, Data, DataStruct, DeriveInput, Er
 use syn::token::Token;
 use Db_shit::*;
 
+macro_rules! my_to_vec {
+    ($vec:expr, Vec<$vec_type:ty>, $left:literal, $right:literal) => {
+        {
+            let _vec: [$vec_type; $right - $left] = $vec[..$right - $left].try_into().unwrap();
+            _vec
+        }
+    }
+}
+
 #[derive(Clone)]
 struct MetaData <'a>{
     attr_type: HashMap<&'a str, &'a str>,
@@ -27,6 +36,7 @@ impl<'a> MetaData<'a> {
         }
     }
 }
+
 
 #[proc_macro_derive(MyTrait2)]
 pub fn my_trait_derive(input: TokenStream) -> TokenStream {
@@ -219,9 +229,9 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 query
             };
 
-            let mut size = 0;
+            let mut size: usize = 0;
 
-            let tuple = {
+            let vals = {
                 let fields_vals = construct_table_s.iter().map(|field| {
                     size += 1;
                     let name = field.0;
@@ -234,41 +244,58 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         #res
                     }
                 });
-
                 quote! {
-                     (#((self.#fields_vals).for_insert(10)), *)
+                     #(&self.#fields_vals), *
                 }
                 //let mut query = String::from(format!("INSERT INTO {} ({}) VALUES \n", table_name_ident.to_string(), fields_names));
             };
 
-            let paren = {
+            let mut question_marks = "".to_string();
 
-                let strings = (0..size).into_iter().map(|val| {
+            let paren = {
+                let _return = (0..size).map(|_| {
+                    question_marks += "?, ";
                     quote! {
-                            String
-                        }
+                        &DbTypes
+                    }
                 });
 
-                quote! {
-                    (#(#strings), *)
+                quote!{
+                    (#(#_return), *)
                 }
-
             };
+            question_marks.pop();
+            question_marks.pop();
+
+            let ident = {
+                let mut string = "".to_string();
+
+                construct_table_s.iter().for_each(|field| {
+                    string += &*field.0.to_string();
+                    string += " ,"
+                });
+                string.pop();
+                string.pop();
+
+                quote! {
+                     #string
+                }
+            };
+
+            let ts = table_name_ident.to_string();
 
             quote! {
                 impl #table_name_ident{
-                    pub fn create(&self) -> String{
+                    pub fn create(& self) -> String{
                         #create.to_string()
                     }
-
-                    pub fn insert(&self) -> #paren {
-                        //INSERT INTO .... VALUES
-                        //(self.id.for_insert(), self.text.for_insert())
-                        #tuple
+                    pub fn insert(&self) -> (String, #paren){
+                        let query = format!("INSERT INTO {} ({}) VALUES ({});", #ts, #ident.to_string() , #question_marks);
+                        (query, (#vals))
                     }
                 }
             }
-        };
+        }
     };
 
     let fields = match data.fields {
@@ -303,7 +330,6 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 fn get_table_name() -> String {
                     #table_name.to_string()
                 }
-
             }
 
             impl #name {
@@ -329,3 +355,93 @@ Common Attributes:
 9.	ON CONFLICT: Specifies conflict-handling behavior.
 
 */
+#[proc_macro_attribute]
+pub fn repo(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let entity = parse_macro_input!(_attr as LitStr).value();
+    let entity_ident = Ident::new(&*entity, Span::call_site());
+
+
+    let table = parse_macro_input!(input as DeriveInput);
+    let table_name = table.ident;
+    let mut table = match table.data {
+        Data::Struct(table) => {table}
+        Data::Enum(_) => {
+            panic!("It should be a struct")
+        }
+        Data::Union(_) => {
+            panic!("It should be a struct")
+        }
+    };
+    let def_struct = {
+        let table_fields = table.fields.iter().map(|field| {
+            field
+        });
+
+        quote! {
+            use rusqlite::{Connection, OpenFlags};
+
+            struct #table_name {
+                db_connection: Connection,
+                entities: Vec<#entity_ident>,
+                #(#table_fields), *
+            }
+        }
+    };
+
+    let impl_struct = {
+        let connect_to_db = {
+            quote! {
+                pub fn connect() -> Connection{
+                    Connection::open_with_flags(#entity_ident::get_table_name(), OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap()
+                }
+            }
+        };
+
+        let create = {
+            quote! {
+                pub fn create(&self) -> Result<(), ()> {
+                    let struct_d = #entity_ident::default();
+                    let send_s = struct_d.get_table2();
+
+                    let mut statement = match self.db_connection.prepare(&*send_s.create()) {
+                        Ok(stmt) => stmt,
+                        Err(_) => return Err(()),
+                    };
+
+                    if let Err(_) = statement.execute([]) {
+                        return Err(());
+                    }
+
+                    Ok(())
+                }
+            }
+        };
+
+        let insert = {
+            quote! {
+                pub fn insert(&self, entity: #entity_ident) {
+                    let table = entity.get_table2();
+                    let (q, v) = table.insert();
+                    let mut statement = self.db_connection.prepare(&*q).unwrap();
+
+                    statement.execute(v).unwrap();
+                }
+            }
+        };
+
+        quote! {
+            impl #table_name {
+                #connect_to_db
+                #create
+                #insert
+            }
+        }
+    };
+
+    TokenStream::from(quote!{
+        use crate::users::*;
+        #def_struct
+        #impl_struct
+    })
+
+}

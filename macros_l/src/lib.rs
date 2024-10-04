@@ -11,21 +11,24 @@ pub fn fields_name(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let name = input.ident;
 
 
-    let data = match input.data {
-        Data::Struct(_) => {unreachable!()}
+    let values = match input.data {
+        Data::Struct(data) => {
+            let fields = data.fields.into_iter().map(|variant| {
+                variant.ident.unwrap().to_string()
+            });
+            quote!{
+                [#(#fields.to_string()), *]
+            }
+        }
         Data::Enum(data) => {
-            data
+            let fields = data.variants.into_iter().map(|variant| {
+                variant.ident.to_string()
+            });
+            quote!{
+                [#(#fields.to_string()), *]
+            }
         }
         Data::Union(_) => {unreachable!()}
-    };
-
-    let fields = data.variants.into_iter().map(|variant| {
-        let name = variant.ident.to_string();
-        name
-    });
-
-    let values = quote!{
-        [#(#fields.to_string()), *]
     };
 
     TokenStream::from(quote!{
@@ -37,3 +40,4 @@ pub fn fields_name(_attr: TokenStream, input: TokenStream) -> TokenStream {
         }
     })
 }
+
