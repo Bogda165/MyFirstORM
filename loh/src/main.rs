@@ -17,16 +17,18 @@ pub mod users {
                 .to_string()
         }
         pub fn insert(&self) -> (String, (&DbTypes, &DbTypes)) {
-            let query = format!(
-                "INSERT INTO {0} ({1}) VALUES ({2});",
-                "users",
-                "id ,text".to_string(),
-                "?, ?",
-            );
+            let query =
+                    format!(
+                        "INSERT INTO {0} ({1}) VALUES ({2});",
+                        "users",
+                        "id ,text".to_string(),
+                        "?, ?",
+                    );
             (query, (&self.id.0, &self.text))
         }
     }
     pub struct Users {
+        //changed
         pub id: i32,
         pub text: String,
     }
@@ -51,12 +53,15 @@ pub mod users {
 impl Users {
     pub fn default() -> Users {
         Users {
-            id: 0,
+            id: OptionalNULL::NULL,
             text: "".to_string(),
         }
     }
     pub fn new(id: i32, text: String) -> Users {
-        Users { id, text }
+        Users {
+            id: OptionalNULL::VALUE(id),
+            text,
+        }
     }
 }
 use crate::users::*;
@@ -88,7 +93,6 @@ impl UserRepo {
     pub fn insert(&self, entity: Users) {
         let table = entity.get_table2();
         let (q, v) = table.insert();
-        println!("{q}");
         let mut statement = self.db_connection.prepare(&*q).unwrap();
         statement.execute(v).unwrap();
     }
@@ -102,7 +106,8 @@ impl UserRepo {
     }
 }
 fn main() {
-    let user = Users::new(-1, "Hello".to_string());
+    let user = Users::new(10, "Hello".to_string());
     let user_repo = UserRepo::new();
-    user_repo.insert(user);
+    let user2 = Users::default();
+    user_repo.insert(user2);
 }

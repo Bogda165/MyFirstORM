@@ -2,19 +2,42 @@ use std::error::Error;
 use macros_l::*;
 use rusqlite::{Connection, ToSql};
 use rusqlite::types::ToSqlOutput;
+use rusqlite::types::Value::Null;
 use crate::Attributes::{AUTO_I, PK};
-use crate::DbTypes::{INTEGER, TEXT, FLOAT};
+use crate::DbTypes::*;
 
 trait INSERTABLE {
     fn for_insert(&self, num: i32) -> String;
 }
 
+#[derive(Clone, Debug)]
+pub enum OptionalNULL<T> {
+    NULL,
+    VALUE(T)
+}
+
+impl<T> ToSql for OptionalNULL<T>
+    where T: ToSql
+{
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        match self {
+            OptionalNULL::NULL => {Null.to_sql()}
+            OptionalNULL::VALUE(val) => {
+                val.to_sql()
+            }
+        }
+    }
+}
+
 #[fields_name]
 #[derive(Debug)]
 pub enum DbTypes {
+    INTEGER_N(OptionalNULL<i32>),
+    FLOAT_N(OptionalNULL<f32>),
+    TEXT_N(OptionalNULL<String>),
     INTEGER(i32),
     FLOAT(f32),
-    TEXT(String)
+    TEXT(String),
 }
 
 impl DbTypes {
@@ -29,22 +52,18 @@ impl DbTypes {
             TEXT(_) => {
                 "TEXT".to_string()
             }
-        }
-    }
+            INTEGER_N(_) => {
+                "INTEGER".to_string()
+            }
+            FLOAT_N(_) => {
+                "REAL".to_string()
+            }
+            TEXT_N(_) => {
+                "TEXT".to_string()
+            }
 
-    pub fn for_insert(&self, num: i32) -> String {
-        match self {
-            INTEGER(val) => {
-                if *val == -1 {
-                    return "NULL".to_string();
-                }
-                val.to_string()
-            }
-            FLOAT(val) => {
-                val.to_string()
-            }
-            TEXT(str) => {
-                str.clone()
+            _ => {
+                unreachable!("I hae not any others types")
             }
         }
     }
@@ -62,6 +81,24 @@ impl INSERTABLE for DbTypes {
             TEXT(str) => {
                 str.clone()
             }
+            INTEGER_N(val) => {
+                match val {
+                    OptionalNULL::NULL => {"NULL".to_string()}
+                    OptionalNULL::VALUE(val) => {val.to_string()}
+                }
+            }
+            FLOAT_N(val) => {
+                match val {
+                    OptionalNULL::NULL => {"NULL".to_string()}
+                    OptionalNULL::VALUE(val) => {val.to_string()}
+                }
+            }
+            TEXT_N(val) => {
+                match val {
+                    OptionalNULL::NULL => {"NULL".to_string()}
+                    OptionalNULL::VALUE(val) => {val.clone()}
+                }
+            }
         }
     }
 }
@@ -73,6 +110,9 @@ impl ToSql for DbTypes {
             DbTypes::INTEGER(i) => {Ok(ToSqlOutput::from(*i))},
             DbTypes::FLOAT(f) => Ok(ToSqlOutput::from(*f)),
             DbTypes::TEXT(s) => Ok(ToSqlOutput::from(s.clone())),
+            INTEGER_N(i) => {i.to_sql()},
+            FLOAT_N(f) => {f.to_sql()},
+            TEXT_N(t) => {t.to_sql()},
         }
     }
 }
@@ -101,29 +141,6 @@ impl Attributes {
     }
 }
 
-pub struct user {
-    //INTEGER, PK, AUTO_I
-    pub id: i32,
-    //TEXT
-    pub name: String,
-}
-
-pub struct _user {
-    pub id: (DbTypes, Attributes, Attributes),
-    pub name: (DbTypes)
-}
-/* build a table of the struct
-           "field1": "attr1", "attr2" ...
-           ...
-        */
-impl user {
-    pub fn get_table(&self) -> _user{
-        _user {
-            id: (INTEGER(self.id), PK, AUTO_I),
-            name: TEXT(self.name.clone()),
-        }
-    }
-}
 
 pub trait TableTrait {
 

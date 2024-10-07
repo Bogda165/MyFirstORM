@@ -30,6 +30,9 @@ impl<'a> MetaData<'a> {
         set.insert( "TEXT",  "TEXT");
         set.insert( "PK",  "PRIMARY KEY");
         set.insert( "AUTO_I",  "AUTOINCREMENT");
+        set.insert("INTEGER_N", "INTEGER_N");
+        set.insert("FLOAT_N", "FLOAT_N");
+        set.insert("TEXT_N", "TEXT_N");
         set.insert( "CONNECT", "  ");
         MetaData {
             attr_type: set
@@ -130,7 +133,12 @@ fn create_attr_with_type(input: &Attribute, field_name: Ident) -> Result<((proc_
 fn to_string<'a, 'b>(attr: &'a Ident, meta_data: MetaData<'b>) -> &'b str {
     let attr_name = &*attr.to_string();
 
-    meta_data.attr_type.get(attr_name).unwrap()
+    match meta_data.attr_type.get(attr_name) {
+        None => {panic!("No type or attribute in the list")}
+        Some(val) => {
+            val
+        }
+    }
 }
 
 #[proc_macro_attribute]
