@@ -2,11 +2,14 @@ extern crate proc_macro;
 use proc_macro::{TokenStream};
 use std::any::{type_name, type_name_of_val};
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use std::str::FromStr;
 use proc_macro2::{Ident, Span};
 use quote::{format_ident, quote, ToTokens};
-use syn::{parse, parse_macro_input, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, ItemFn, ItemStruct, LitStr, Type};
-use syn::token::Token;
+use syn::{parse, parse_macro_input, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, Item, ItemFn, ItemStruct, LitStr, Meta, Type};
+use syn::Expr::Lit;
+use syn::Lit::Str;
+use syn::token::{Struct, Token};
 use Db_shit::*;
 
 macro_rules! my_to_vec {
@@ -33,7 +36,7 @@ impl<'a> MetaData<'a> {
         set.insert("INTEGER_N", "INTEGER_N");
         set.insert("FLOAT_N", "FLOAT_N");
         set.insert("TEXT_N", "TEXT_N");
-        set.insert( "CONNECT", "  ");
+        set.insert( "CONNECT", "");
         MetaData {
             attr_type: set
         }
@@ -46,6 +49,27 @@ pub fn my_trait_derive(input: TokenStream) -> TokenStream {
     let input = syn::parse(input).unwrap();
 
     impl_macro(&input)
+}
+
+fn find_by_name(path: &str, name: String) -> Result<ItemStruct, ()> {
+    //convert to syn::File
+    let syn_file = match syn::parse_file(path) {
+        Ok(file) => file,
+        Err(_) => {panic! ("Couldn't open a file")}
+    };
+
+    for item in syn_file.items {
+        match item {
+            Item::Struct(stru) => {
+                if stru.ident.to_string() == name {
+                    return Ok(stru.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Err(())
 }
 
 fn impl_macro(input: &DeriveInput) -> TokenStream {
@@ -141,6 +165,115 @@ fn to_string<'a, 'b>(attr: &'a Ident, meta_data: MetaData<'b>) -> &'b str {
     }
 }
 
+struct FroConnect {
+    path: String,
+    table_name: String,
+    field_name: String,
+}
+
+impl FroConnect {
+    fn default() -> Self {
+        FroConnect {
+            path: "".to_string(),
+            table_name: "".to_string(),
+            field_name: "".to_string(),
+        }
+    }
+}
+
+fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> TokenStream {
+    let name = field.0;
+    //check if connect logic
+    if field.1[0].meta.path().get_ident().unwrap().to_string() == "Connect" {
+        let mut connect_o = FroConnect::default();
+        field.1.iter().for_each(|attr| {
+            match attr.meta {
+                Meta::Path(_) => {
+                    panic!("Not expected attribute {}", attr.meta.path().get_ident().unwrap().to_string())
+                }
+                Meta::List(_) => {
+                    panic!("Not expected attribute {}", attr.meta.path().get_ident().unwrap().to_string())
+                }
+                Meta::NameValue(ref attr) => {
+                    match &*attr.path.get_ident().unwrap().to_string() {
+                        "path" => {
+                            if let Lit(expr_list) = &attr.value {
+                                if let Str(lit_str) = &expr_list.lit {
+                                    connect_o.path = lit_str.value()
+                                }
+                            }
+                        }
+                        "table_name" => {
+                            if let Lit(expr_list) = &attr.value {
+                                if let Str(lit_str) = &expr_list.lit {
+                                    connect_o.table_name = lit_str.value()
+                                }
+                            }
+                        }
+                        "field_name" => {
+                            if let Lit(expr_list) = &attr.value {
+                                if let Str(lit_str) = &expr_list.lit {
+                                    connect_o.field_name = lit_str.value()
+                                }
+                            }
+                        }
+                        _ => {
+                            panic!("Not expected attribute name")
+                        }
+                    }
+                }
+            }
+        });
+
+        //find struct with name table_name, and get the type of field_name
+        //form quote
+        let mut field_type;
+        //find struct
+        match find_by_name(&*connect_o.path, connect_o.table_name.clone()) {
+            Ok(table) => {
+                assert_eq!(table.ident.to_string(), connect_o.table_name);
+                if let Fields::Named(fields) = table.fields {
+                    for field in fields.named {
+                        if field.ident.unwrap().to_string() == connect_o.field_name {
+                            field_type = field.ty;
+                        }
+                    }
+                }
+
+            }
+            Err(err) => {
+                panic!("Couldn't find strcut with name {}; error {:?}", connect_o.table_name, err);
+            }
+        };
+
+        //get Dbtype from file_type
+    }
+
+    let attrs = field.1.iter().map(|attr| {
+        match is_in_allowed_attrs(&attr.meta.path().get_ident().unwrap()) {
+            Ok(_attr) => {
+                _attr
+            }
+            Err(_) => {
+                panic!("Not allowed type or attr")
+            }
+        }
+    });
+
+    TokenStream::from(quote! {
+        pub #name: (#(#attrs),* ),
+    })
+}
+
+fn from_attribute_to_comment(attr: Attribute) -> proc_macro2::TokenStream {
+    let name = attr.meta.path().get_ident().unwrap().to_string();
+    eprintln!("used");
+    quote! {
+        #[doc = #name]
+        //I mean its strange
+    }
+}
+
 #[proc_macro_attribute]
 pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
     dbg!("Start");
@@ -175,9 +308,12 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
             let fields = construct_table_s.iter().map(|field| {
                 let name = field.0;
+
                 let attrs = field.1.iter().map(|attr| {
                     match is_in_allowed_attrs(&attr.meta.path().get_ident().unwrap()) {
-                        Ok(attr) => {attr}
+                        Ok(_attr) => {
+                            _attr
+                        }
                         Err(_) => {
                             panic!("Not allowed type or attr")
                         }
@@ -305,15 +441,34 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
     };
-
+    let mut comments_q = Default::default();
     let fields = match data.fields {
         Fields::Named(fields) => {
             let not_t_fields = fields.named.into_iter().map(|mut field| {
-                field.attrs.clear();
-                field
+                comments_q = {
+                    let comments = field.attrs.iter().map(|attribute| {
+                        eprintln!("{:?}", attribute.meta.path().get_ident().unwrap().to_string());
+                        from_attribute_to_comment(attribute.clone())
+                    });
+
+                    quote! {
+                        #(#comments)*
+                    }
+                };
+
+                {
+                    field.attrs.clear();
+                }
+
+                quote! {
+                    #comments_q
+                    pub #field,
+                }
             });
 
-            quote! {  #(pub #not_t_fields),* }
+            quote! {
+                #(#not_t_fields)*
+            }
         }
         _ => {
             panic!("fields are not named wtf")
@@ -330,6 +485,7 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
             pub struct #name
             {
+                #comments_q
                 #fields
             }
 
