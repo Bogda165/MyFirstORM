@@ -1,19 +1,21 @@
 use std::io::ErrorKind::Other;
-use p_macros::repo;
+use p_macros::{repo, table, impl_table};
 use MyTrait::MyTrait2;
 use rusqlite::ffi::{SQLITE_OPEN_CREATE, SQLITE_OPEN_READWRITE};
-use p_macros::table;
 use Db_shit::*;
 use Db_shit::OptionalNULL::VALUE;
+use crate::address::*;
 use crate::users::*;
+use rusqlite::{Connection, OpenFlags};
 #[table("users")]
 struct Users {
-    #[INTEGER_N]
+    #[INTEGER_N(10, NEHUI)]
     #[PK]
     #[AUTO_I]
     id: OptionalNULL<i32>,
     #[TEXT]
     text: String,
+    some_val: String,
 }
 
 impl Users {
@@ -21,26 +23,69 @@ impl Users {
         Users {
             id: OptionalNULL::NULL,
             text: "".to_string(),
+            some_val: "HUI".to_string()
         }
     }
-    pub fn new(id: i32, text: String) -> Users {
+    pub fn new(id: i32, text: String, some_val: String) -> Users {
         Users {
             id: VALUE(id),
-            text
+            text,
+            some_val,
         }
     }
 }
 
+#[table("address")]
+struct Address {
+    #[INTEGER_N]
+    #[PK]
+    #[AUTO_I]
+    id: OptionalNULL<i32>,
+    #[TEXT]
+    address: String,
+
+}
+
+impl Address {
+    pub fn new(addr: String) -> Self {
+        Address {
+            id: OptionalNULL::NULL,
+            address: addr,
+        }
+    }
+
+    pub fn default() -> Self {
+        Address {
+            id: OptionalNULL::NULL,
+            address: "".to_string()
+        }
+    }
+}
 
 #[repo("Users")]
 struct UserRepo {
 
 }
 
+
 impl UserRepo {
     pub fn new() -> Self {
         UserRepo {
             db_connection: UserRepo::connect(),
+            entities: Vec::new(),
+        }
+    }
+}
+
+#[repo("Address")]
+struct AddrRepo {
+
+}
+
+impl AddrRepo {
+    pub fn new() -> Self {
+        AddrRepo {
+            db_connection: AddrRepo::connect(),
             entities: Vec::new(),
         }
     }
@@ -67,10 +112,8 @@ fn main() {
     //
     // let mut prep = conn.prepare(&*table.get_table2().create()).unwrap();
     // prep.execute(()).unwrap();
-    let user = Users::new(10, "Hello".to_string());
-
-    let user_repo = UserRepo::new();
-    let mut user2 = Users::default();
-    user2.text = "I MEAN I DIDN'T EXPACT IT".to_string();
-    user_repo.insert(user2);
+    let address = Address::new("Bal 20".to_string());
+    let mut a_r = AddrRepo::new();
+    a_r.create().unwrap();
+    a_r.insert(address);
 }

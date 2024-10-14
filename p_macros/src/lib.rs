@@ -1,14 +1,16 @@
 extern crate proc_macro;
-use proc_macro::{TokenStream};
+use proc_macro::{TokenStream, TokenTree};
 use std::any::{type_name, type_name_of_val};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
+use std::panic;
 use std::str::FromStr;
-use proc_macro2::{Ident, Span};
+use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote, ToTokens};
-use syn::{parse, parse_macro_input, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, Item, ItemFn, ItemStruct, LitStr, Meta, Type};
+use syn::{parse, parse_macro_input, parse_quote, AttrStyle, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, Item, ItemFn, ItemStruct, LitStr, MacroDelimiter, Meta, MetaList, Type};
 use syn::Expr::Lit;
 use syn::Lit::Str;
+use syn::MacroDelimiter::Paren;
 use syn::token::{Struct, Token};
 use Db_shit::*;
 
@@ -33,9 +35,9 @@ impl<'a> MetaData<'a> {
         set.insert( "TEXT",  "TEXT");
         set.insert( "PK",  "PRIMARY KEY");
         set.insert( "AUTO_I",  "AUTOINCREMENT");
-        set.insert("INTEGER_N", "INTEGER_N");
-        set.insert("FLOAT_N", "FLOAT_N");
-        set.insert("TEXT_N", "TEXT_N");
+        set.insert("INTEGER_N", "INTEGER");
+        set.insert("FLOAT_N", "FLOAT");
+        set.insert("TEXT_N", "TEXT");
         set.insert( "CONNECT", "");
         MetaData {
             attr_type: set
@@ -158,7 +160,7 @@ fn to_string<'a, 'b>(attr: &'a Ident, meta_data: MetaData<'b>) -> &'b str {
     let attr_name = &*attr.to_string();
 
     match meta_data.attr_type.get(attr_name) {
-        None => {panic!("No type or attribute in the list")}
+        None => {panic!("No type or attribute in the list, {}", attr_name)}
         Some(val) => {
             val
         }
@@ -181,10 +183,14 @@ impl FroConnect {
     }
 }
 
-fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> TokenStream {
+fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> proc_macro2::TokenStream {
     let name = field.0;
     //check if connect logic
+    if field.1.len() == 0 {
+        return quote!{};
+    }
     if field.1[0].meta.path().get_ident().unwrap().to_string() == "Connect" {
+
         let mut connect_o = FroConnect::default();
         field.1.iter().for_each(|attr| {
             match attr.meta {
@@ -225,6 +231,8 @@ fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> TokenStream {
             }
         });
 
+
+        /*
         //find struct with name table_name, and get the type of field_name
         //form quote
         let mut field_type;
@@ -246,7 +254,11 @@ fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> TokenStream {
             }
         };
 
+         */
+
         //get Dbtype from file_type
+
+
     }
 
     let attrs = field.1.iter().map(|attr| {
@@ -260,19 +272,245 @@ fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> TokenStream {
         }
     });
 
-    TokenStream::from(quote! {
+    quote! {
         pub #name: (#(#attrs),* ),
-    })
+    }
 }
 
 fn from_attribute_to_comment(attr: Attribute) -> proc_macro2::TokenStream {
     let name = attr.meta.path().get_ident().unwrap().to_string();
-    eprintln!("used");
+    let additional = match attr.meta {
+        Meta::Path(path) => {
+            "".to_string()
+        }
+        Meta::List(metaList) => {
+            let mut token_stream = TokenStream::from(metaList.tokens);
+            format!("({})", token_stream.into_iter().map(|tree| {
+                match tree {
+                    TokenTree::Group(_) => { unreachable!("write converting to a group") }
+                    TokenTree::Ident(ident) => { ident.to_string()}
+                    TokenTree::Punct(_) => {"".to_string()}
+                    TokenTree::Literal(lit) => { lit.to_string() }
+                }
+            }).filter(|str| str.len() > 0).collect::<Vec<String>>().join(", "))
+        }
+        Meta::NameValue(_) => {
+            unreachable!("Idk what to do if so")
+        }
+    };
+    let _return = format!("{}{}", name, additional);
     quote! {
-        #[doc = #name]
+        #[doc = #_return]
         //I mean its strange
     }
 }
+
+fn create_construct_table(structure: &DataStruct) -> HashMap<Ident, Vec<Attribute>>{
+    let mut construct_table_s = HashMap::<Ident, Vec<Attribute>>::new();
+    for field in structure.fields.iter() {
+        construct_table_s.insert(field.clone().ident.unwrap(), field.clone().attrs);
+    }
+    construct_table_s
+}
+
+
+fn parse_string_to_attr(attr_str: String) -> Result<Attribute, String> {
+    // get a type of Meta
+
+    let meta = if let Some(index) = attr_str.find('(') {
+        //list
+        let ident_str = &(&*attr_str)[..index];
+        let len = attr_str.len();
+        let ident = Ident::new(ident_str, Span::call_site());
+        // get between brackets
+        let tokens_iter = (&*attr_str)[(index + 1)..len - 1].split(", ").map(|str| {
+            match panic::catch_unwind(|| {Ident::new(str, Span::call_site())}) {
+                Ok(ident) => {
+                    quote!{
+                        #ident
+                    }
+                }
+                Err(_) => {
+                    let lit = Literal::from_str(str).unwrap();
+
+                    quote! {
+                        #lit
+                    }
+                }
+            }
+        });
+        let tokens = quote! {
+            #(#tokens_iter),*
+        };
+
+        eprintln!("{:?}", tokens.to_string());
+
+        let hui = MetaList {
+            path: parse_quote!(#ident),
+            delimiter: Paren(syn::token::Paren::default()),
+            tokens,
+        };
+
+        Meta::List(hui)
+    }else if let Some(index) = attr_str.find("=") {
+        //nameVal
+        unreachable!("Not realized for name val")
+    }else {
+        //path
+        let ident_str = &*attr_str;
+
+        let ident = Ident::new(ident_str, Span::call_site());
+        Meta::Path(parse_quote!(#ident))
+    };
+
+
+
+    Ok(Attribute {
+        pound_token: Default::default(),
+        style: AttrStyle::Outer,
+        bracket_token: Default::default(),
+        meta,
+    })
+}
+
+//TODO test
+fn from_doc_text_to_ident(doc: &Attribute) -> Result<Attribute, String> {
+    if doc.meta.path().get_ident().unwrap().to_string() == "doc" {
+        let meta_name_value = doc.meta.require_name_value().unwrap();
+        if let Lit(value_in_doc) = &meta_name_value.value {
+            if let Str(value_in_doc_string) = &value_in_doc.lit {
+                let value = value_in_doc_string.value().to_string();
+                let attr = parse_string_to_attr(value)?;
+                return Ok(attr)
+            }
+            return Err("Not a String".to_string());
+        }
+        return Err("Not a Lit".to_string());
+    }
+    Err("Not a doc".to_string())
+}
+
+fn create_construct_table_from_doc(structure: &DataStruct) -> HashMap<Ident, Vec<Attribute>>{
+    let mut construct_table_s = HashMap::<Ident, Vec<Attribute>>::new();
+    for field in structure.fields.iter() {
+        //extract a value from a string
+        let _attrs: Vec<Attribute> = field.attrs.iter().map(|attribute| {
+            from_doc_text_to_ident(attribute).unwrap()
+        }).collect();
+
+
+        construct_table_s.insert(field.clone().ident.unwrap(), _attrs);
+    }
+    construct_table_s
+}
+
+
+#[proc_macro_attribute]
+pub fn impl_table(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    //check for struct
+    let input = parse_macro_input!(input as DeriveInput);
+    let table_name_ident = &input.ident;
+    let table = match &input.data {
+        Data::Struct(table) => {table}
+        _ => {
+            panic!("The table must be represented as a struct")
+        }
+    };
+
+    let construct_table_s = create_construct_table_from_doc(&table);
+    eprintln!("Construct table create from comments");
+    let meta_data = MetaData::default();
+    //create an impl for table
+    let create = {
+        let mut query = String::from(format!("CREATE TABLE {} (\n", table_name_ident.to_string()));
+        construct_table_s.iter().for_each(|field| {
+            query += &field.0.to_string();
+            query += "\t";
+            field.1.iter().for_each(|attr| {
+                query += to_string(attr.meta.path().get_ident().unwrap(), meta_data.clone());
+                query += " "
+            });
+            query += ",\n"
+        });
+        query.pop();
+        query.pop();
+        query += "\n);";
+        query
+    };
+    eprintln!("create method created");
+    let mut size: usize = 0;
+
+    let vals = {
+        let fields_vals = construct_table_s.iter().map(|field| {
+            size += 1;
+            let name = field.0;
+            let mut res = quote! {#name};
+            if field.1.len() != 1 {
+                res = quote! {#name.0};
+            }
+
+            quote! {
+                #res
+            }
+        });
+        quote! {
+                 #(&self.#fields_vals), *
+            }
+        //let mut query = String::from(format!("INSERT INTO {} ({}) VALUES \n", table_name_ident.to_string(), fields_names));
+    };
+    eprintln!("vals generated");
+
+    let mut question_marks = "".to_string();
+
+    let paren = {
+        let _return = (0..size).map(|_| {
+            question_marks += "?, ";
+            quote! {
+                &DbTypes
+            }
+        });
+
+        quote! {
+            (#(#_return), *)
+        }
+    };
+    question_marks.pop();
+    question_marks.pop();
+    eprintln!("question marks generated");
+
+    let ident = {
+        let mut string = "".to_string();
+
+        construct_table_s.iter().for_each(|field| {
+            string += &*field.0.to_string();
+            string += " ,"
+        });
+        string.pop();
+        string.pop();
+
+        quote! {
+            #string
+        }
+    };
+    eprintln!("ident is generated");
+
+    let ts = table_name_ident.to_string();
+    eprintln!("{:?}", ident.to_string());
+
+    TokenStream::from(quote! {
+        #input
+        impl #table_name_ident{
+            pub fn create(& self) -> String{
+                #create.to_string()
+            }
+            pub fn insert(&self) -> (String, #paren){
+                let query = format!("INSERT INTO {} ({}) VALUES ({});", #ts, #ident.to_string() , #question_marks);
+                (query, (#vals))
+            }
+        }
+    })
+}
+
 
 #[proc_macro_attribute]
 pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -286,7 +524,6 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let table_struct;
     let impl_table;
-    let impl_table_shadow;
 
     let data = match input.data {
         Data::Struct(data) => {
@@ -296,158 +533,71 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
             panic!("Not a structure");
         }
     };
-    let _ = {
-        let mut construct_table_s = HashMap::<Ident, Vec<Attribute>>::new();
-        for field in data.fields.iter() {
-            construct_table_s.insert(field.clone().ident.unwrap(), field.clone().attrs);
-        }
 
-        //create a struct
-        table_struct = {
-            let construct_table_s = construct_table_s.clone();
+    let mut construct_table_s = create_construct_table(&data);
 
-            let fields = construct_table_s.iter().map(|field| {
-                let name = field.0;
+    //create a struct
+    table_struct = {
+        let construct_table_s = construct_table_s.clone();
 
-                let attrs = field.1.iter().map(|attr| {
-                    match is_in_allowed_attrs(&attr.meta.path().get_ident().unwrap()) {
-                        Ok(_attr) => {
-                            _attr
-                        }
-                        Err(_) => {
-                            panic!("Not allowed type or attr")
-                        }
-                    }
-                });
+        let fields = construct_table_s.iter().map(|field| {
+            let _field = handle_field_table_struct(field);
 
-                quote! {
-                    pub #name: (#(#attrs),* ),
-                }
+            let attributes = field.1.iter().map(|attribute|{
+                eprintln!("{:?}", attribute.meta.path().get_ident().unwrap().to_string());
+                from_attribute_to_comment(attribute.clone())
             });
-
-            quote!{
-                pub struct #table_name_ident {
-                    #(#fields)*
-                }
-            }
-        };
-        // create an impl
-        impl_table = {
-            let fields = construct_table_s.iter().map(|field|{
-                let name = field.0;
-                let attrs = field.1.iter().map(|attr| {
-                    match create_attr_with_type(attr, name.clone()) {
-                        Ok(attr) => {attr}
-                        Err(_) => {
-                            panic!("Not allowed type or attr")
-                        }
-                    }
-                });
-                quote! {
-                    #name: (#(#attrs),* ),
-                }
-            });
-            quote!(
-                #table_name_ident
-                {
-                    #(#fields)*
-                }
-            )
-        };
-        //create an impl for table
-        impl_table_shadow = {
-            let create = {
-                let mut query = String::from(format!("CREATE TABLE {} (\n", table_name_ident.to_string()));
-                construct_table_s.iter().for_each(|field| {
-                    query += &field.0.to_string();
-                    query += "\t";
-                    field.1.iter().for_each(|attr| {
-                        query += to_string(attr.meta.path().get_ident().unwrap(), meta_data.clone());
-                        query += " "
-                    });
-                    query += ",\n"
-                });
-                query.pop();
-                query.pop();
-                query += "\n);";
-                query
-            };
-
-            let mut size: usize = 0;
-
-            let vals = {
-                let fields_vals = construct_table_s.iter().map(|field| {
-                    size += 1;
-                    let name = field.0;
-                    let mut res = quote!{#name};
-                    if field.1.len() != 1 {
-                        res = quote! {#name.0};
-                    }
-
-                    quote! {
-                        #res
-                    }
-                });
-                quote! {
-                     #(&self.#fields_vals), *
-                }
-                //let mut query = String::from(format!("INSERT INTO {} ({}) VALUES \n", table_name_ident.to_string(), fields_names));
-            };
-
-            let mut question_marks = "".to_string();
-
-            let paren = {
-                let _return = (0..size).map(|_| {
-                    question_marks += "?, ";
-                    quote! {
-                        &DbTypes
-                    }
-                });
-
-                quote!{
-                    (#(#_return), *)
-                }
-            };
-            question_marks.pop();
-            question_marks.pop();
-
-            let ident = {
-                let mut string = "".to_string();
-
-                construct_table_s.iter().for_each(|field| {
-                    string += &*field.0.to_string();
-                    string += " ,"
-                });
-                string.pop();
-                string.pop();
-
-                quote! {
-                     #string
-                }
-            };
-
-            let ts = table_name_ident.to_string();
 
             quote! {
-                impl #table_name_ident{
-                    pub fn create(& self) -> String{
-                        #create.to_string()
-                    }
-                    pub fn insert(&self) -> (String, #paren){
-                        let query = format!("INSERT INTO {} ({}) VALUES ({});", #ts, #ident.to_string() , #question_marks);
-                        (query, (#vals))
+                #(#attributes)*
+                #_field
+            }
+        });
+
+        let _return = quote!{
+            #[doc = "I work here"]
+            pub struct #table_name_ident {
+                #(#fields)*
+            }
+        };
+        eprintln!("The structure is generated");
+        _return
+    };
+    // create an impl
+    impl_table = {
+        let fields = construct_table_s.iter().map(|field|{
+            if field.1.len() == 0 {
+                return quote!{};
+            }
+            let name = field.0;
+            let attrs = field.1.iter().map(|attr| {
+                match create_attr_with_type(attr, name.clone()) {
+                    Ok(attr) => {attr}
+                    Err(_) => {
+                        panic!("Not allowed type or attr")
                     }
                 }
+            });
+            quote! {
+                #name: (#(#attrs),* ),
             }
-        }
+        });
+        quote!(
+            #[doc = "I work here"]
+            #table_name_ident
+            {
+                #(#fields)*
+            }
+        )
     };
+
     let mut comments_q = Default::default();
     let fields = match data.fields {
         Fields::Named(fields) => {
             let not_t_fields = fields.named.into_iter().map(|mut field| {
                 comments_q = {
                     let comments = field.attrs.iter().map(|attribute| {
-                        eprintln!("{:?}", attribute.meta.path().get_ident().unwrap().to_string());
+                        //eprintln!("{:?}", attribute.meta.path().get_ident().unwrap().to_string());
                         from_attribute_to_comment(attribute.clone())
                     });
 
@@ -480,12 +630,11 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
         pub mod #table_name_ident{
             use Db_shit::*;
             #[derive(Debug)]
+            #[crate::impl_table]
             #table_struct
-            #impl_table_shadow
 
             pub struct #name
             {
-                #comments_q
                 #fields
             }
 
@@ -542,7 +691,6 @@ pub fn repo(_attr: TokenStream, input: TokenStream) -> TokenStream {
         });
 
         quote! {
-            use rusqlite::{Connection, OpenFlags};
 
             struct #table_name {
                 db_connection: Connection,
@@ -607,5 +755,4 @@ pub fn repo(_attr: TokenStream, input: TokenStream) -> TokenStream {
         #def_struct
         #impl_struct
     })
-
 }
