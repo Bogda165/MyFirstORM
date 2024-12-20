@@ -7,6 +7,7 @@ use Db_shit::OptionalNULL::VALUE;
 use crate::address::*;
 use crate::users::*;
 use rusqlite::{Connection, OpenFlags};
+
 #[table("users")]
 struct Users {
     #[INTEGER_N(10, NEHUI)]
@@ -112,8 +113,7 @@ fn main() {
     //
     // let mut prep = conn.prepare(&*table.get_table2().create()).unwrap();
     // prep.execute(()).unwrap();
-    let address = Address::new("Bal 20".to_string());
+    let address = Address::new("Bal 550".to_string());
     let mut a_r = AddrRepo::new();
-    a_r.create().unwrap();
     a_r.insert(address);
 }
