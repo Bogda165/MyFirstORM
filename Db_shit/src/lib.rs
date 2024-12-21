@@ -1,7 +1,8 @@
+use std::any::type_name;
 use std::error::Error;
 use macros_l::*;
 use rusqlite::{Connection, ToSql};
-use rusqlite::types::ToSqlOutput;
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef};
 use rusqlite::types::Value::Null;
 use crate::Attributes::{AUTO_I, PK};
 use crate::DbTypes::*;
@@ -25,6 +26,49 @@ impl<T> ToSql for OptionalNULL<T>
             OptionalNULL::VALUE(val) => {
                 val.to_sql()
             }
+        }
+    }
+}
+
+impl FromSql for OptionalNULL<i32> {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value {
+            ValueRef::Null => {
+                Ok(OptionalNULL::NULL)
+            }
+            ValueRef::Integer(val) => {
+                //TODO fix to i64 uoy
+                Ok(OptionalNULL::VALUE(val as i32))
+            }
+            _ => Err(FromSqlError::InvalidType)
+        }
+    }
+}
+
+impl FromSql for OptionalNULL<f32> {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value {
+            ValueRef::Null => {
+                Ok(OptionalNULL::NULL)
+            }
+            ValueRef::Real(val) => {
+                Ok(OptionalNULL::VALUE(val as f32))
+            }
+            _ => Err(FromSqlError::InvalidType)
+        }
+    }
+}
+
+impl FromSql for OptionalNULL<String> {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value {
+            ValueRef::Null => {
+                Ok(OptionalNULL::NULL)
+            }
+            ValueRef::Text(val) => {
+                Ok(OptionalNULL::VALUE(std::str::from_utf8(val).unwrap().to_string()))
+            }
+            _ => Err(FromSqlError::InvalidType)
         }
     }
 }

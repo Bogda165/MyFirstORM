@@ -5,10 +5,7 @@ mod repo_struct;
 mod additional_functions;
 
 extern crate proc_macro;
-use proc_macro::{TokenStream, TokenTree};
-use std::any::{type_name, type_name_of_val};
-use std::collections::{HashMap, HashSet};
-use std::fs::File;
+use proc_macro::{TokenStream};
 use std::panic;
 use std::str::FromStr;
 use proc_macro2::{Ident, Literal, Span};
@@ -112,9 +109,6 @@ impl FroConnect {
     }
 }
 
-
-
-//TODO test
 
 
 #[proc_macro_attribute]
