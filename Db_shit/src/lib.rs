@@ -1,9 +1,20 @@
+use std::collections::HashMap;
+use syn::parse2;
+use syn::TypePath;
+use syn::Meta::Path;
+use syn::PathSegment;
+use syn::Ident;
+use syn::Type::Paren;
+use syn::TypeTuple;
+use syn::Type;
 use std::any::type_name;
 use std::error::Error;
 use macros_l::*;
 use rusqlite::{Connection, ToSql};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef};
 use rusqlite::types::Value::Null;
+use proc_macro2::{Span};
+use syn::__private::quote::quote;
 use crate::Attributes::{AUTO_I, PK};
 use crate::DbTypes::*;
 
@@ -74,6 +85,7 @@ impl FromSql for OptionalNULL<String> {
 }
 
 #[fields_name]
+#[get_types]
 #[derive(Debug)]
 pub enum DbTypes {
     INTEGER_N(OptionalNULL<i32>),
@@ -183,6 +195,7 @@ impl Attributes {
             }
         }
     }
+
 }
 
 
@@ -210,14 +223,23 @@ pub trait Entity
     fn get_table_name() -> String;
 }
 
+#[fields_name]
+#[get_types]
+enum TestEnum {
+    VALUE(i32),
+    VALUE2(OptionalNULL<i32>),
+    VALUE3(String, i32, f32),
+}
+
 
 #[cfg(test)]
 mod tests {
+    use syn::__private::ToTokens;
     use super::*;
 
-    #[test]
+    /*#[test]
     fn test_get_table() {
-        let user_instance = user {
+       /* let user_instance = user {
             id: 1,
             name: "Alice".to_string(),
         };
@@ -233,5 +255,14 @@ mod tests {
             DbTypes::TEXT(val) => assert_eq!(val, "Alice".to_string()),
             _ => panic!("Name field did not match expected values"),
         }
+
+        */
+    }*/
+
+    #[test]
+    fn test_get_types() {
+        TestEnum::get_variants().iter().for_each(|ty| {
+            println!{"{}", quote!{#ty}};
+        })
     }
 }

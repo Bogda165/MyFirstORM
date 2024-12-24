@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 macros_l = {path = "../macros_l"}
 rusqlite = "0.32.1"
+proc-macro2 = "1.0.86"
+syn = "2.0.79"

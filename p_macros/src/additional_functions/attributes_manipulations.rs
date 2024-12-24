@@ -26,7 +26,7 @@ pub fn is_in_allowed_attrs(input: &Ident) -> Result<((proc_macro2::TokenStream))
 
 }
 
-pub fn create_attr_with_type(input: &Attribute, field_name: Ident) -> Result<((proc_macro2::TokenStream)), (())> {
+pub fn create_attr_with_type<F: Fn(proc_macro2::TokenStream) -> proc_macro2::TokenStream>(input: &Attribute, field_name: &Ident, closure: F) -> Result<((proc_macro2::TokenStream)), (())> {
     let input_s = input.meta.path().get_ident().unwrap().to_string();
     let attrs = Attributes::get_variants();
     let types = DbTypes::get_variants();
@@ -46,8 +46,9 @@ pub fn create_attr_with_type(input: &Attribute, field_name: Ident) -> Result<((p
             }
         })
     }else if types.contains(&input_s) {
+        let inside_db_type = closure(quote! {#field_name});
         Ok(quote!{
-            DbTypes::#input_ident(self.#field_name.clone())
+            DbTypes::#input_ident(#inside_db_type)
         })
     } else {
         return Err(())

@@ -2,8 +2,9 @@ use proc_macro::TokenStream;
 use std::collections::HashMap;
 use proc_macro2::{Ident};
 use quote::quote;
-use syn::{Attribute, DeriveInput};
-use crate::additional_functions::attributes_manipulations::to_string;
+use syn::{Attribute, DeriveInput, Type};
+use Db_shit::{Attributes, DbTypes};
+use crate::additional_functions::attributes_manipulations::{create_attr_with_type, to_string};
 use crate::meta_data::MetaData;
 
 
@@ -104,6 +105,71 @@ fn insert_function(table_name_ident: &Ident, construct_table_s: &HashMap<Ident, 
 }
 
 
+fn load_function(table_name: &Ident) -> proc_macro2::TokenStream {
+    let table_name_s = table_name.to_string();
+    quote! {
+        pub fn load(params: &str) -> String{
+            format!("SELECT * from {0}\n{1}", #table_name_s, params)
+        }
+    }
+}
+
+
+fn from_row(shadow_t_ident: &Ident, construct_table_s: &HashMap<Ident, Vec<Attribute>>) -> proc_macro2::TokenStream {
+
+    let _ = construct_table_s.iter().map(|field| {
+        let name = field.0;
+        let attrs = field.1;
+
+        if attrs.len() <= 0 {
+            return quote!{};
+        }
+
+        let mut id = -1;
+
+        let attributes_parsed = attrs.iter().map(|attr| {
+            id += 1;
+            let inside_dv_type_fn = |input: proc_macro2::TokenStream| -> proc_macro2::TokenStream{
+                let all_types: HashMap<String, Type> = DbTypes::get_types_nt();
+
+                let _type = all_types.get(&attr.meta.path().get_ident().unwrap().to_string()).unwrap();
+                let _input_str = input.to_string();
+
+                quote! {
+                    row.get::<&str, #_type>(#_input_str).unwrap()
+                }
+            };
+
+            match create_attr_with_type(attr, name, inside_dv_type_fn) {
+                Ok(attr) => {attr}
+                Err(_) => {
+                    std::panic!("Not allowed type or attr")
+                }
+            }
+
+        });
+
+        quote! {
+            #name: (
+                #(#attributes_parsed)*
+            )
+        }
+    });
+
+    quote! {
+         pub fn from_row(row: &Row) -> Self {
+            #shadow_t_ident {
+                id: (
+                    DbTypes::INTEGER_N(row.get::<&str, OptionalNULL<i32>>("id").unwrap()),
+                    Attributes::PK,
+                    Attributes::AUTO_I,
+                ),
+                text: DbTypes::TEXT(row.get::<&str, String>("text").unwrap()),
+            }
+        }
+    }
+}
+
 pub fn generate_function(input: &DeriveInput, construct_table_s: HashMap<Ident, Vec<Attribute>>, table_name_ident: &Ident) -> TokenStream{
     let meta_data = MetaData::default();
 
@@ -113,6 +179,10 @@ pub fn generate_function(input: &DeriveInput, construct_table_s: HashMap<Ident, 
 
     let insert_function = insert_function(table_name_ident, &construct_table_s);
 
+    let load_function = load_function(table_name_ident);
+
+    let from_row_function = from_row(table_name_ident, &construct_table_s);
+
     TokenStream::from(quote! {
         #input
         impl #table_name_ident{
@@ -120,6 +190,10 @@ pub fn generate_function(input: &DeriveInput, construct_table_s: HashMap<Ident, 
             #create_function
 
             #insert_function
+
+            #load_function
+
+            #from_row_function
         }
     })
 }
