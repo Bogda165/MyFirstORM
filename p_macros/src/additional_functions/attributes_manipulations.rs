@@ -46,9 +46,9 @@ pub fn create_attr_with_type<F: Fn(proc_macro2::TokenStream) -> proc_macro2::Tok
             }
         })
     }else if types.contains(&input_s) {
-        let inside_db_type = closure(quote! {#field_name});
+        let inside_db_type = closure(quote! { #field_name });
         Ok(quote!{
-            DbTypes::#input_ident(#inside_db_type)
+            DbTypes::#input_ident( #inside_db_type )
         })
     } else {
         return Err(())

@@ -22,62 +22,62 @@ trait INSERTABLE {
     fn for_insert(&self, num: i32) -> String;
 }
 
-#[derive(Clone, Debug)]
-pub enum OptionalNULL<T> {
+#[derive(Debug, Clone)]
+pub enum HUI<T> {
     NULL,
     VALUE(T)
 }
 
-impl<T> ToSql for OptionalNULL<T>
+impl<T> ToSql for HUI<T>
     where T: ToSql
 {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         match self {
-            OptionalNULL::NULL => {Null.to_sql()}
-            OptionalNULL::VALUE(val) => {
+            HUI::NULL => {Null.to_sql()}
+            HUI::VALUE(val) => {
                 val.to_sql()
             }
         }
     }
 }
 
-impl FromSql for OptionalNULL<i32> {
+impl FromSql for HUI<i32> {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value {
             ValueRef::Null => {
-                Ok(OptionalNULL::NULL)
+                Ok(HUI::NULL)
             }
             ValueRef::Integer(val) => {
                 //TODO fix to i64 uoy
-                Ok(OptionalNULL::VALUE(val as i32))
+                Ok(HUI::VALUE(val as i32))
             }
             _ => Err(FromSqlError::InvalidType)
         }
     }
 }
 
-impl FromSql for OptionalNULL<f32> {
+impl FromSql for HUI<f32> {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value {
             ValueRef::Null => {
-                Ok(OptionalNULL::NULL)
+                Ok(HUI::NULL)
             }
             ValueRef::Real(val) => {
-                Ok(OptionalNULL::VALUE(val as f32))
+                Ok(HUI::VALUE(val as f32))
             }
             _ => Err(FromSqlError::InvalidType)
         }
     }
 }
 
-impl FromSql for OptionalNULL<String> {
+impl FromSql for HUI<String> {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value {
             ValueRef::Null => {
-                Ok(OptionalNULL::NULL)
+                Ok(HUI::NULL)
             }
             ValueRef::Text(val) => {
-                Ok(OptionalNULL::VALUE(std::str::from_utf8(val).unwrap().to_string()))
+                Ok(HUI::VALUE(std::str::from_utf8(val).unwrap().to_string()))
             }
             _ => Err(FromSqlError::InvalidType)
         }
@@ -88,9 +88,9 @@ impl FromSql for OptionalNULL<String> {
 #[get_types]
 #[derive(Debug)]
 pub enum DbTypes {
-    INTEGER_N(OptionalNULL<i32>),
-    FLOAT_N(OptionalNULL<f32>),
-    TEXT_N(OptionalNULL<String>),
+    INTEGER_N(HUI<i32>),
+    FLOAT_N(HUI<f32>),
+    TEXT_N(HUI<String>),
     INTEGER(i32),
     FLOAT(f32),
     TEXT(String),
@@ -139,20 +139,20 @@ impl INSERTABLE for DbTypes {
             }
             INTEGER_N(val) => {
                 match val {
-                    OptionalNULL::NULL => {"NULL".to_string()}
-                    OptionalNULL::VALUE(val) => {val.to_string()}
+                    HUI::NULL => {"NULL".to_string()}
+                    HUI::VALUE(val) => {val.to_string()}
                 }
             }
             FLOAT_N(val) => {
                 match val {
-                    OptionalNULL::NULL => {"NULL".to_string()}
-                    OptionalNULL::VALUE(val) => {val.to_string()}
+                    HUI::NULL => {"NULL".to_string()}
+                    HUI::VALUE(val) => {val.to_string()}
                 }
             }
             TEXT_N(val) => {
                 match val {
-                    OptionalNULL::NULL => {"NULL".to_string()}
-                    OptionalNULL::VALUE(val) => {val.clone()}
+                    HUI::NULL => {"NULL".to_string()}
+                    HUI::VALUE(val) => {val.clone()}
                 }
             }
         }
@@ -227,7 +227,7 @@ pub trait Entity
 #[get_types]
 enum TestEnum {
     VALUE(i32),
-    VALUE2(OptionalNULL<i32>),
+    VALUE2(HUI<i32>),
     VALUE3(String, i32, f32),
 }
 

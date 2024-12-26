@@ -8,12 +8,15 @@ extern crate proc_macro;
 use proc_macro::{TokenStream};
 use std::panic;
 use std::str::FromStr;
+use std::vec::IntoIter;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote, ToTokens};
-use syn::{parse, parse_macro_input, parse_quote, AttrStyle, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, Item, ItemFn, ItemStruct, LitStr, MacroDelimiter, Meta, MetaList, Type};
+use syn::{parenthesized, parse, parse_macro_input, parse_quote, token, AttrStyle, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, Item, ItemFn, ItemStruct, LitStr, MacroDelimiter, Meta, MetaList, Token, Type};
 use syn::Expr::Lit;
 use syn::Lit::Str;
 use syn::MacroDelimiter::Paren;
+use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
 use syn::token::{Struct, Token};
 use Db_shit::*;
 use crate::additional_functions::construct_table::create_construct_table_from_doc;
@@ -128,7 +131,6 @@ pub fn impl_table(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     generate_function(&input, construct_table_s, table_name_ident)
 }
-
 #[proc_macro_attribute]
 pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
     dbg!("Start");
@@ -168,15 +170,78 @@ Common Attributes:
 9.	ON CONFLICT: Specifies conflict-handling behavior.
 
 */
+
+struct KeyValue {
+    key: Ident,
+    value: LitStr,
+}
+
+struct KeyValueList {
+    pairs: Punctuated<KeyValue, Token![,]>,
+}
+
+impl Parse for KeyValueList {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        let pairs = Punctuated::parse_terminated(input)?;
+        Ok(KeyValueList { pairs })
+    }
+}
+
+impl IntoIterator for KeyValueList {
+    type Item = KeyValue;
+    type IntoIter = <syn::punctuated::Punctuated<KeyValue, syn::token::Comma> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.pairs.into_iter()
+    }
+}
+
+impl Parse for KeyValue {
+    fn parse(input: ParseStream) -> Result<Self, syn::Error> {
+        let key: Ident = input.parse().unwrap();
+        eprintln!("{}", key.to_string());
+
+        eprintln!("{}", input);
+        input.parse::<Token![=]>().unwrap();
+        let value: LitStr = input.parse().unwrap();
+
+        eprintln!("{}", value.value());
+        Ok(KeyValue { key, value })
+    }
+}
+
 #[proc_macro_attribute]
 pub fn repo(_attr: TokenStream, input: TokenStream) -> TokenStream {
-    let entity = parse_macro_input!(_attr as LitStr).value();
-    let entity_ident = Ident::new(&*entity, Span::call_site());
+
+    eprintln!("{_attr}");
+    let attrs = parse_macro_input!(_attr as KeyValueList);
+
+    let mut table_name = LitStr::new("", Span::call_site());
+    let mut entity_name = LitStr::new("", Span::call_site());
+
+    eprintln!("hui");
+
+    //TODO refactor
+
+    for val in attrs {
+        if val.key == "entity" {
+            entity_name = val.value;
+        }
+        else if val.key == "table" {
+            table_name = val.value;
+        }
+    }
+
+    eprintln!("{:?} {:?}", table_name.value(), entity_name.value());
 
 
-    let table = parse_macro_input!(input as DeriveInput);
-    let table_name = table.ident;
-    let mut table = match table.data {
+
+    let entity_ident = Ident::new(&*entity_name.value(), Span::call_site());
+    let table_ident = Ident::new(&*table_name.value(), Span::call_site());
+    let repo = parse_macro_input!(input as DeriveInput);
+
+    let repo_name = repo.ident;
+    let mut repo = match repo.data {
         Data::Struct(table) => {table}
         Data::Enum(_) => {
             panic!("It should be a struct")
@@ -186,5 +251,5 @@ pub fn repo(_attr: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
-    TokenStream::from(init_repo_struct(&table, &table_name, &entity_ident))
+    TokenStream::from(init_repo_struct(&repo, &repo_name, &entity_ident, &table_ident))
 }

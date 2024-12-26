@@ -1,4 +1,5 @@
 use proc_macro::TokenStream;
+use std::str::EncodeUtf16;
 use proc_macro2::Ident;
 use quote::quote;
 use crate::repo_struct::define_repo_struct::create_struct;
@@ -45,18 +46,36 @@ fn connect_to_db_func(entity_ident: &Ident) -> proc_macro2::TokenStream {
 
 
 
-pub(crate) fn impl_repo_struct(entity_ident: &Ident, table_name: &Ident) -> proc_macro2::TokenStream {
+fn load_func(entity_ident: &Ident, table_ident: &Ident) -> proc_macro2::TokenStream {
+    quote! {
+        pub fn load(&mut self) {
+            let q = #table_ident::#table_ident::load("");
+            let mut statement = self.db_connection.prepare(&*q).unwrap();
+            statement.query_map([], |row: &Row| {
+                let a_s = #table_ident::#table_ident::from_row(row);
+                self.entities.push(#table_ident::#entity_ident::from_shadow_table(a_s));
+                Ok(())
+            }).unwrap().for_each(drop);
+        }
+    }
+}
+
+
+pub(crate) fn impl_repo_struct(entity_ident: &Ident, repo: &Ident, table_ident: &Ident) -> proc_macro2::TokenStream {
     let connect_to_db = connect_to_db_func(entity_ident);
 
     let create = create_func(entity_ident);
 
     let insert = insert_func(entity_ident);
 
+    let load = load_func(entity_ident, table_ident);
+
     quote! {
-        impl #table_name {
+        impl #repo {
             #connect_to_db
             #create
             #insert
+            #load
         }
     }
 }

@@ -74,9 +74,15 @@ pub fn get_types(_attr: TokenStream, input: TokenStream) -> TokenStream {
                             let _ty = field.ty.clone();
                             elements.push(_ty);
                         });
+                        let mut tuple_type;
+                        if elements.len() != 1 {
+                            tuple_type = quote!{
+                                (#elements)
+                            };
+                        }
 
-                        let tuple_type = quote!{
-                            (#elements)
+                        tuple_type = quote!{
+                            #elements
                         };
 
                         quote! {

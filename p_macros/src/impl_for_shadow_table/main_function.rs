@@ -117,7 +117,7 @@ fn load_function(table_name: &Ident) -> proc_macro2::TokenStream {
 
 fn from_row(shadow_t_ident: &Ident, construct_table_s: &HashMap<Ident, Vec<Attribute>>) -> proc_macro2::TokenStream {
 
-    let _ = construct_table_s.iter().map(|field| {
+    let inside = construct_table_s.iter().map(|field| {
         let name = field.0;
         let attrs = field.1;
 
@@ -135,6 +135,7 @@ fn from_row(shadow_t_ident: &Ident, construct_table_s: &HashMap<Ident, Vec<Attri
                 let _type = all_types.get(&attr.meta.path().get_ident().unwrap().to_string()).unwrap();
                 let _input_str = input.to_string();
 
+
                 quote! {
                     row.get::<&str, #_type>(#_input_str).unwrap()
                 }
@@ -151,7 +152,7 @@ fn from_row(shadow_t_ident: &Ident, construct_table_s: &HashMap<Ident, Vec<Attri
 
         quote! {
             #name: (
-                #(#attributes_parsed)*
+                #(#attributes_parsed),*
             )
         }
     });
@@ -159,12 +160,7 @@ fn from_row(shadow_t_ident: &Ident, construct_table_s: &HashMap<Ident, Vec<Attri
     quote! {
          pub fn from_row(row: &Row) -> Self {
             #shadow_t_ident {
-                id: (
-                    DbTypes::INTEGER_N(row.get::<&str, OptionalNULL<i32>>("id").unwrap()),
-                    Attributes::PK,
-                    Attributes::AUTO_I,
-                ),
-                text: DbTypes::TEXT(row.get::<&str, String>("text").unwrap()),
+                #(#inside),*
             }
         }
     }
@@ -184,6 +180,7 @@ pub fn generate_function(input: &DeriveInput, construct_table_s: HashMap<Ident, 
     let from_row_function = from_row(table_name_ident, &construct_table_s);
 
     TokenStream::from(quote! {
+        use rusqlite::Row;
         #input
         impl #table_name_ident{
 

@@ -1,18 +1,23 @@
+use Db_shit::Entity;
 use std::io::ErrorKind::Other;
 use p_macros::{repo, table, impl_table};
 use MyTrait::MyTrait2;
+use rusqlite::Row;
 use rusqlite::ffi::{SQLITE_OPEN_CREATE, SQLITE_OPEN_READWRITE};
-use Db_shit::*;
-use Db_shit::OptionalNULL::VALUE;
+use Db_shit::{Attributes, DbTypes};
+use Db_shit::HUI;
+
 use crate::address::*;
 use crate::users::*;
 use rusqlite::{Connection, OpenFlags};
+use Db_shit::HUI::VALUE;
+
 #[table("users")]
 struct Users {
     #[INTEGER_N(10, NEHUI)]
     #[PK]
     #[AUTO_I]
-    id: OptionalNULL<i32>,
+    id: HUI<i32>,
     #[TEXT]
     text: String,
     some_val: String,
@@ -21,7 +26,7 @@ struct Users {
 impl Users {
     pub fn default() -> Users {
         Users {
-            id: OptionalNULL::NULL,
+            id: HUI::NULL,
             text: "".to_string(),
             some_val: "HUI".to_string()
         }
@@ -35,12 +40,13 @@ impl Users {
     }
 }
 
+#[derive(Debug)]
 #[table("address")]
 struct Address {
     #[INTEGER_N]
     #[PK]
     #[AUTO_I]
-    id: OptionalNULL<i32>,
+    id: HUI<i32>,
     #[TEXT]
     address: String,
 
@@ -49,20 +55,20 @@ struct Address {
 impl Address {
     pub fn new(addr: String) -> Self {
         Address {
-            id: OptionalNULL::NULL,
+            id: HUI::NULL,
             address: addr,
         }
     }
 
     pub fn default() -> Self {
         Address {
-            id: OptionalNULL::NULL,
+            id: HUI::NULL,
             address: "".to_string()
         }
     }
 }
 
-#[repo("Users")]
+#[repo(entity = "Users", table = "users")]
 struct UserRepo {
 
 }
@@ -77,7 +83,7 @@ impl UserRepo {
     }
 }
 
-#[repo("Address")]
+#[repo(table = "address", entity = "Address")]
 struct AddrRepo {
 
 }
@@ -92,10 +98,13 @@ impl AddrRepo {
 }
 
 fn main() {
-/*
+
     let address = Address::new("Bal 20".to_string());
     let mut a_r = AddrRepo::new();
-    a_r.create().unwrap();
-    a_r.insert(address);
- */
+    a_r.load();
+
+    for i in a_r.entities {
+        println!("{:?}", i);
+    }
+
 }

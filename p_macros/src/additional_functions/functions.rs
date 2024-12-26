@@ -80,8 +80,6 @@ pub fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> proc_macro
          */
 
         //get Dbtype from file_type
-
-
     }
 
     let attrs = field.1.iter().map(|attr| {

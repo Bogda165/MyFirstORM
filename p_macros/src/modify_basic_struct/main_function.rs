@@ -18,6 +18,8 @@ pub fn create_macro(data: DataStruct, shadow_table_name_i: Ident, name: Ident, s
     let shadow_table = create_shadow_table(&construct_table_s, &shadow_table_name_i);
 
     let from_shadow_t_f = from_shadow_table_f(&shadow_table_name_i, &name, &construct_table_s);
+
+    let shadow_table_name_s = shadow_table_name_i.to_string();
     //connect
     quote!{
         pub mod #shadow_table_name_i{
@@ -27,6 +29,7 @@ pub fn create_macro(data: DataStruct, shadow_table_name_i: Ident, name: Ident, s
             #[crate::impl_table]
             #shadow_table
 
+            #[doc = #shadow_table_name_s]
             #updated_struct
 
             impl Entity for #name
