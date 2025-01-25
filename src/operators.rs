@@ -1,4 +1,4 @@
-use my_macros::{AutoQueryable, Queryable};
+use my_macros::{AutoQueryable, From, Queryable};
 use crate::{Query, Queryable};
 use crate::create_a_name::AutoQueryable;
 use crate::expressions::Expression;
@@ -34,6 +34,13 @@ where T: Queryable
 {
     NOT(T),
     Expr(T),
+}
+
+impl<T> From<T> for NotExpression<T>
+where T: Queryable {
+    fn from(value: T) -> Self {
+        Self::Expr(value)
+    }
 }
 
 impl<T> Queryable for NotExpression<T>
@@ -158,7 +165,7 @@ enum BitwiseOperator {
 }
 
 /// All binary operators return Number
-#[derive(Debug, AutoQueryable, Clone)]
+#[derive(Debug, AutoQueryable, Clone, From)]
 #[path = "crate::operators"]
 enum Binary {
     LogicalOperator(LogicalOperator),
@@ -280,10 +287,15 @@ mod tests {
     fn between() {
         let co = create_some_operators();
 
-        let between_operator = Operator::BinOperator(Binary::Between(Expression::OperatorExpr(Box::new(co)), Expression::Lit(Literal::NumberLit(Number::Int(10))), Expression::Lit(Literal::NumberLit(Number::Int(15)))));
+        let between_operator = Operator::BinOperator(Binary::Between(Box::new(co).into(), Literal::NumberLit(10.into()).into(), Literal::NumberLit(Number::Int(15)).into()));
 
         println!("{}", between_operator.clone().to_query());
-
         assert_eq!("10 * 15 + 18 BETWEEN 10 AND 15", exclude_braces(between_operator.to_query()));
+    }
+
+    #[test]
+    fn comparison_operator() {
+        let operator1: Expression = Literal::NumberLit(10.into()).into();
+        assert_eq!("10", exclude_braces(operator1.to_query()))
     }
 }

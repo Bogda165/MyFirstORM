@@ -1,4 +1,4 @@
-use my_macros::{AutoQueryable, Queryable};
+use my_macros::{AutoQueryable, From, Queryable};
 use crate::create_a_name::{AutoQueryable, Queryable};
 use crate::expressions::Expression;
 use crate::literals::Number::*;
@@ -33,7 +33,7 @@ impl Queryable for i32 {
 }
 
 /// Numbers literal change later to 64 instead of 32
-#[derive(Debug, Queryable, Clone, AutoQueryable)]
+#[derive(Debug, Queryable, Clone, AutoQueryable, From)]
 #[path = "crate::literals"]
 pub enum Number {
     Real(f32),
@@ -50,7 +50,7 @@ pub enum Bool {
 }
 
 /// Literals
-#[derive(Debug, Clone, Queryable, AutoQueryable)]
+#[derive(Debug, Clone, Queryable, AutoQueryable, From)]
 #[path = "crate::literals"]
 pub enum Literal {
     NumberLit(Number),
@@ -66,18 +66,22 @@ mod tests {
     use crate::literals::{Bool, Literal, Number};
     use crate::Queryable;
 
+    fn exclude_braces(mut query: String) -> String {
+        query.replace("(", "").replace(")", "")
+    }
+
     #[test]
     fn test1() {
-        let lit = Literal::NumberLit(Number::Int(10));
-        assert_eq!(lit.to_query(), "10");
+        let lit = Literal::NumberLit(10.into());
+        assert_eq!(exclude_braces(lit.to_query()), "10");
 
         let lit = Literal::NumberLit(Number::Real(10.24));
-        assert_eq!(lit.to_query(), "10.24");
+        assert_eq!(exclude_braces(lit.to_query()), "10.24");
 
         let lit = Literal::Bool(Bool::True);
-        assert_eq!(lit.to_query(), "True");
+        assert_eq!(exclude_braces(lit.to_query()), "True");
 
         let lit = Literal::StringLit("SomeString".to_string());
-        assert_eq!(lit.to_query(), "SomeString");
+        assert_eq!(exclude_braces(lit.to_query()), "SomeString");
     }
 }

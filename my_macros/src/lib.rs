@@ -4,6 +4,7 @@ use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::{parse_macro_input, parse_str, Attribute, Data, DeriveInput, Field, Fields, Path, Token};
 use syn::__private::TokenStream2;
+use syn::Member::Unnamed;
 use syn::punctuated::Punctuated;
 
 fn get_module_path(attrs: &Vec<Attribute>, enum_name: String) -> Path {
@@ -172,4 +173,52 @@ pub fn dervive_none_f(input: TokenStream) -> TokenStream {
             }
         }
     )
+}
+
+#[proc_macro_derive(From)]
+pub fn from_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = &input.ident;
+
+    if let Data::Enum(_enum) = &input.data {
+        let functions = _enum.variants.iter().map(|variant| {
+            let variant_name = &variant.ident;
+
+            let (variant_type, inside_value) = if let Fields::Unnamed(vf) = &variant.fields{
+                let vf = vf.clone();
+                let variant_type = quote!{#vf};
+
+                let inside_value = if vf.unnamed.len() > 1 {
+                    let inside = 0..vf.unnamed.len();
+
+                    quote!{
+                        #(value.#inside), *
+                    }
+                }else {
+                    quote!{value}
+                };
+
+                (variant_type, inside_value)
+            }else {
+                return quote!{}
+            };
+
+
+            quote!{
+                impl From<#variant_type> for #name {
+                    fn from(value: #variant_type) -> Self {
+                        Self::#variant_name(#inside_value)
+                    }
+                }
+            }
+        });
+
+        TokenStream::from(quote! {
+            #(#functions)*
+        })
+
+    }else {
+        panic!("no impl for this type 0f data")
+    }
 }
