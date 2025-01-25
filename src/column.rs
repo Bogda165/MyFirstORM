@@ -1,6 +1,12 @@
-use crate::Expr;
+use my_macros::Queryable;
+use crate::create_a_name::Queryable;
+use crate::expressions::Expression;
+use crate::Column::*;
 
-enum Column {
-    Expr(Expr),
-    ALL,
+#[derive(Debug, Queryable)]
+#[path = "crate::column"]
+pub enum Column {
+    Expr(Expression),
+    All,
+    AllFromTable(String),
 }

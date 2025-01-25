@@ -1,0 +1,7 @@
+[package]
+name = "sql_query"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+my_macros = {path = "my_macros" }

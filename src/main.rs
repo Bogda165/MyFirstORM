@@ -1,39 +1,30 @@
+use crate::column::Column;
+use crate::create_a_name::Queryable;
+
 mod expressions;
 mod column;
 mod literals;
 mod operators;
+mod create_a_name;
 
+#[derive(Debug, Clone)]
 struct RawColumn {
     table_name: String,
     name: String,
 }
-enum Expr {
-    BitwiseExpr
-}
-enum Aggr {
 
-}
-
-enum Func {
-
-}
-
-enum Column {
-    Raw(RawColumn),
-    All,
-    Expression(Expr),
-    Aggregation(Aggr),
-    Function(Func),
-    Case,
-    Query,
-    Lit,
-    NULL,
-}
-// for check
-trait Query {
-    fn select(self, columns: Vec<Column>) -> String {
-        //creat a string query with given columns
+impl Queryable for RawColumn {
+    fn convert_to_query(&self) -> Option<String> {
+        todo!()
     }
+}
+
+// for check
+pub trait Query {
+    // fn select(self, columns: Vec<Column>) -> String {
+    //     //creat a string query with given columns
+    //     String::new()
+    // }
 }
 
 fn main() {
