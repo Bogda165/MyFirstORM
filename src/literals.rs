@@ -1,8 +1,9 @@
-use my_macros::Queryable;
-use crate::create_a_name::Queryable;
+use my_macros::{AutoQueryable, Queryable};
+use crate::create_a_name::{AutoQueryable, Queryable};
 use crate::expressions::Expression;
 use crate::literals::Number::*;
 use crate::literals::Literal::*;
+
 
 ///Time literal
 // #[derive(Debug)]
@@ -16,20 +17,23 @@ use crate::literals::Literal::*;
 //
 // }
 
+
+impl AutoQueryable for f32 {}
+impl AutoQueryable for i32 {}
 impl Queryable for f32 {
-    fn to_query(&self) -> String {
-        self.to_string()
+    fn convert_to_query(&self) -> Option<String> {
+        Some(self.to_string())
     }
 }
 
 impl Queryable for i32 {
-    fn to_query(&self) -> String {
-        self.to_string()
+    fn convert_to_query(&self) -> Option<String> {
+        Some(self.to_string())
     }
 }
 
 /// Numbers literal change later to 64 instead of 32
-#[derive(Debug, Queryable, Clone)]
+#[derive(Debug, Queryable, Clone, AutoQueryable)]
 #[path = "crate::literals"]
 pub enum Number {
     Real(f32),
@@ -38,7 +42,7 @@ pub enum Number {
 
 
 //Bool literal
-#[derive(Debug, Clone, Queryable)]
+#[derive(Debug, Clone, Queryable, AutoQueryable)]
 #[path = "crate::literals"]
 pub enum Bool {
     True,
@@ -46,7 +50,7 @@ pub enum Bool {
 }
 
 /// Literals
-#[derive(Debug, Clone, Queryable)]
+#[derive(Debug, Clone, Queryable, AutoQueryable)]
 #[path = "crate::literals"]
 pub enum Literal {
     NumberLit(Number),

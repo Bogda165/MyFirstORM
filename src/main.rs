@@ -1,5 +1,5 @@
 use crate::column::Column;
-use crate::create_a_name::Queryable;
+use crate::create_a_name::{AutoQueryable, Queryable};
 
 mod expressions;
 mod column;
@@ -12,6 +12,8 @@ struct RawColumn {
     table_name: String,
     name: String,
 }
+
+impl AutoQueryable for RawColumn{}
 
 impl Queryable for RawColumn {
     fn convert_to_query(&self) -> Option<String> {

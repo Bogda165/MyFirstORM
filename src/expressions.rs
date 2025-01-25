@@ -1,7 +1,8 @@
 use crate::expressions::Expression::*;
-use std::io::read_to_string;use my_macros::Queryable;
+use std::io::read_to_string;
+use my_macros::{AutoQueryable};
 use crate::{Column, RawColumn};
-use crate::create_a_name::Queryable;
+use crate::create_a_name::{AutoQueryable, Queryable};
 use crate::literals::Literal;
 use crate::operators::Operator;
 
@@ -9,7 +10,7 @@ use crate::operators::Operator;
 /// each expression should be divided with (expr)
 ///
 /// The check will be performed when create for example some_expr.and(some_expr) check that expr is not Lit::String
-#[derive(Debug, Queryable, Clone)]
+#[derive(Debug, AutoQueryable, Clone)]
 #[path = "crate::expressions"]
 pub enum Expression {
     Lit(Literal),
@@ -20,6 +21,12 @@ pub enum Expression {
     CaseExpr(Box<CaseExpr>),
 }
 
+impl Queryable for Expression{
+    fn convert_to_query(&self) -> Option<String> {
+        None
+    }
+}
+
 
 ///if base is non case must contain a row or binary operator
 #[derive(Debug, Clone)]
@@ -28,6 +35,8 @@ struct CaseExpr {
     case: Vec<(Expression, Expression)>,
     else_expr: Expression,
 }
+
+impl AutoQueryable for CaseExpr{}
 
 impl Queryable for CaseExpr {
     fn convert_to_query(&self) -> Option<String> {
@@ -43,6 +52,8 @@ impl Queryable for CaseExpr {
         })
     }
 }
+
+impl AutoQueryable for String {}
 
 impl Queryable for String {
     fn convert_to_query(&self) -> Option<String> {

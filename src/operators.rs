@@ -1,5 +1,6 @@
-use my_macros::Queryable;
+use my_macros::{AutoQueryable, Queryable};
 use crate::{Query, Queryable};
+use crate::create_a_name::AutoQueryable;
 use crate::expressions::Expression;
 
 /// Collation need its own Expression https://www.sqlite.org/datatype3.html#collation
@@ -8,7 +9,7 @@ use crate::expressions::Expression;
 ///
 /// Example: Expression(Operator::Some_operator(Expression::OperatorExpression::Collate(Expression), Expression))
 ///
-#[derive(Debug, Clone, Queryable)]
+#[derive(Debug, Clone, AutoQueryable, Queryable)]
 #[path = "crate::operators"]
 enum CollateType {
     NOCASE,
@@ -19,14 +20,15 @@ enum CollateType {
 /// Extract Operator https://www.sqlite.org/json1.html#jptr
 ///
 /// let In be -> and Into ->>
-#[derive(Debug, Clone, Queryable)]
+#[derive(Debug, Clone, AutoQueryable, Queryable)]
 #[path = "crate::operators"]
 enum ExtractOperator {
     In,
     Into
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, AutoQueryable)]
+#[path = "crate::operators"]
 pub enum NotExpression<T>
 where T: Queryable
 {
@@ -47,7 +49,7 @@ where T: Queryable
 
 /// Working with NULLS
 ///
-#[derive(Debug, Clone, Queryable)]
+#[derive(Debug, Clone, Queryable, AutoQueryable)]
 #[path = "crate::operators"]
 pub enum NULLsExpression {
     IsNULL(Expression),
@@ -57,7 +59,7 @@ pub enum NULLsExpression {
 ///Like Expression
 ///
 /// Not that second and Expression must be Lit::String, and the third must be a char
-#[derive(Debug, Clone, Queryable)]
+#[derive(Debug, Clone, AutoQueryable)]
 #[path = "crate::operators"]
 enum LikeExpression {
     Like(Expression, Expression),
@@ -87,7 +89,7 @@ impl Queryable for LikeExpression {
 /// LIKE, GLOB, REGEXP, MATCH
 ///
 /// https://www.sqlite.org/lang_Expression.html#like
-#[derive(Debug, Clone, Queryable)]
+#[derive(Debug, Clone, AutoQueryable, Queryable)]
 #[divide("path,GLOB,REGEX,MATCH")]
 #[path = "crate::operators"]
 enum LGRM{
@@ -101,7 +103,7 @@ enum LGRM{
 }
 
 
-#[derive(Debug, Queryable, Clone)]
+#[derive(Debug, AutoQueryable, Clone, Queryable)]
 #[divide("AND,OR,XOR")]
 #[path = "crate::operators"]
 enum LogicalOperator {
@@ -120,7 +122,7 @@ enum LogicalOperator {
 //     }
 // }
 
-#[derive(Debug, Queryable, Clone)]
+#[derive(Debug, Queryable, Clone, AutoQueryable)]
 #[divide("<=,<,>,>=,=")]
 #[path = "crate::operators"]
 enum ComparisonOperator {
@@ -132,7 +134,7 @@ enum ComparisonOperator {
 }
 
 /// only Binary operators, columns or numbers can be used
-#[derive(Debug, Queryable, Clone)]
+#[derive(Debug, Queryable, Clone, AutoQueryable)]
 #[divide("+,-,*,/,%")]
 #[path = "crate::operators"]
 enum ArithmeticOperator {
@@ -145,7 +147,7 @@ enum ArithmeticOperator {
 }
 
 /// Can be only used on integers and columns
-#[derive(Debug, Queryable, Clone)]
+#[derive(Debug, Queryable, Clone, AutoQueryable)]
 #[divide("&,|,<<,>>")]
 #[path = "crate::operators"]
 enum BitwiseOperator {
@@ -156,7 +158,7 @@ enum BitwiseOperator {
 }
 
 /// All binary operators return Number
-#[derive(Debug, Queryable, Clone)]
+#[derive(Debug, AutoQueryable, Clone)]
 #[path = "crate::operators"]
 enum Binary {
     LogicalOperator(LogicalOperator),
@@ -181,7 +183,8 @@ impl Queryable for Binary {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, AutoQueryable)]
+#[path = "crate::operators"]
 enum NonBinary {
     Collate(Expression, CollateType),
     ExtractOperator(Expression, ExtractOperator),
@@ -200,7 +203,7 @@ impl Queryable for NonBinary {
     }
 }
 
-#[derive(Debug, Clone, Queryable)]
+#[derive(Debug, Clone, AutoQueryable)]
 #[path = "crate::operators"]
 pub enum Operator {
     /// Only used for strings
@@ -232,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn binary_operators() {
+    fn logical_operator() {
         let and_operator = Operator::BinOperator(
             Binary::LogicalOperator(
                 LogicalOperator::AND(
@@ -243,7 +246,9 @@ mod tests {
         );
 
         assert_eq!("True AND False", exclude_braces(and_operator.to_query()));
+    }
 
+    fn create_some_operators() -> crate::operators::Operator{
         let multiple = Operator::BinOperator(
             Binary::ArithmeticOperator(
                 ArithmeticOperator::MUL(
@@ -253,19 +258,32 @@ mod tests {
             )
         );
 
-        assert_eq!("10 * 15", exclude_braces(multiple.clone().to_query()));
-
-        let complex_o = Operator::BinOperator(
+        Operator::BinOperator(
             Binary::ArithmeticOperator(
                 ArithmeticOperator::ADD(
                     Expression::OperatorExpr(Box::new(multiple)),
                     Expression::Lit(Literal::NumberLit(Number::Int(18))),
                 )
             )
-        );
+        )
+    }
+    #[test]
+    fn arithmetic_operator() {
 
-        println!("{}", complex_o.clone().to_query());
+        let complex_operator = create_some_operators();
 
-        assert_eq!("10 * 15 + 18", exclude_braces(complex_o.to_query()));
+        println!("{}", complex_operator.clone().to_query());
+
+        assert_eq!("10 * 15 + 18", exclude_braces(complex_operator.to_query()));
+    }
+    #[test]
+    fn between() {
+        let co = create_some_operators();
+
+        let between_operator = Operator::BinOperator(Binary::Between(Expression::OperatorExpr(Box::new(co)), Expression::Lit(Literal::NumberLit(Number::Int(10))), Expression::Lit(Literal::NumberLit(Number::Int(15)))));
+
+        println!("{}", between_operator.clone().to_query());
+
+        assert_eq!("10 * 15 + 18 BETWEEN 10 AND 15", exclude_braces(between_operator.to_query()));
     }
 }

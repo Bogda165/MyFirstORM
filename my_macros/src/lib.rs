@@ -47,11 +47,19 @@ fn create_format(size: usize, divide: Vec<String>) -> String {
 }
 
 
-#[proc_macro_derive(Queryable, attributes(divide))]
+#[proc_macro_derive(AutoQueryable, attributes(divide))]
 pub fn my_custom_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let enum_name = &input.ident;
+    // get geneircs
+    let generics = &input.generics;
+
+    let where_clause = if let Some(where_clause) = generics.clone().where_clause {
+        quote!{#where_clause}
+    }else {
+        quote!{}
+    };
 
     let path = get_module_path(&input.attrs, enum_name.to_string());
 
@@ -114,7 +122,7 @@ pub fn my_custom_derive(input: TokenStream) -> TokenStream {
                     let vns = variant_name.to_string();
                     quote!{
                         #[doc = "HUI"]
-                        #path::#variant_name => {#vns.to_string()}
+                        #path::#variant_name => {Some(#vns.to_string())}
                     }
                 }
             })
@@ -125,7 +133,10 @@ pub fn my_custom_derive(input: TokenStream) -> TokenStream {
 
 
     let _return = quote! {
-        impl Queryable for #enum_name {
+
+        impl #generics crate::create_a_name::AutoQueryable for #enum_name #generics
+        #where_clause
+        {
             fn to_query_auto(&self) -> Option<String> {
                 match self {
                     #(#inside_match),*
@@ -135,4 +146,30 @@ pub fn my_custom_derive(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(_return)
+}
+
+#[proc_macro_derive(Queryable)]
+pub fn dervive_none_f(input: TokenStream) -> TokenStream {
+    let input =  parse_macro_input!(input as DeriveInput);
+
+    let name = &input.ident;
+    let generics = &input.generics;
+
+    let where_clause = if let Some(where_clause) = generics.clone().where_clause {
+        quote!{#where_clause}
+    }else {
+        quote!{}
+    };
+
+    TokenStream::from(
+        quote!{
+            impl #generics Queryable for #name #generics
+            #where_clause
+            {
+                fn convert_to_query(&self) -> Option<String> {
+                    None
+                }
+            }
+        }
+    )
 }
