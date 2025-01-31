@@ -1,0 +1,1 @@
+## SQL queries generator, with type compile time type safety.
