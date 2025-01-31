@@ -1,10 +1,48 @@
 use crate::expressions::Expression::*;
 use std::io::read_to_string;
+use std::iter::Filter;
 use my_macros::{AutoQueryable, From, Queryable};
 use crate::{Column, RawColumn};
 use crate::create_a_name::{AutoQueryable, Queryable};
-use crate::literals::Literal;
+use crate::literals::{Bool, Literal, Number};
 use crate::operators::Operator;
+
+#[derive(Debug, AutoQueryable, Clone, Queryable, From)]
+#[path = "crate::expressions"]
+pub enum RawTypes {
+    Lit(Literal),
+    Column(RawColumn),
+}
+
+impl From<Number> for RawTypes {
+    fn from(value: Number) -> Self {
+        RawTypes::Lit(Literal::NumberLit(value))
+    }
+}
+
+impl From<String> for RawTypes {
+    fn from(value: String) -> Self {
+        RawTypes::Lit(Literal::StringLit(value))
+    }
+}
+
+impl From<Bool> for RawTypes {
+    fn from(value: Bool) -> Self {
+        RawTypes::Lit(Literal::Bool(value))
+    }
+}
+
+impl From<i32> for RawTypes {
+    fn from(value: i32) -> Self {
+        RawTypes::Lit(Literal::NumberLit(Number::Int(value)))
+    }
+}
+
+impl From<f32> for RawTypes {
+    fn from(value: f32) -> Self {
+        RawTypes::Lit(Number::Real(value).into())
+    }
+}
 
 
 /// each expression should be divided with (expr)
@@ -13,31 +51,18 @@ use crate::operators::Operator;
 #[derive(Debug, AutoQueryable, Clone, From, Queryable)]
 #[path = "crate::expressions"]
 pub enum Expression {
-    Lit(Literal),
-    Column(RawColumn),
+    Raw(RawTypes),
     /// as operator must require an Expr inside to avoid non sized object use Box
     OperatorExpr(Box<Operator>),
     /// case expression must contain another Expr
     CaseExpr(Box<CaseExpr>),
 }
 
-// impl From<Literal> for Expression {
-//     fn from(value: Literal) -> Self {
-//         Self::Lit(value)
-//     }
-// }
-//
-// impl From<Operator> for Expression {
-//     fn from(value: Operator) -> Self {
-//         Self::OperatorExpr(Box::new(value))
-//     }
-// }
-//
-// impl From<Box<Operator>> for Expression {
-//     fn from(value: Box<Operator>) -> Self {
-//         Self::OperatorExpr(value)
-//     }
-// }
+impl From<Literal> for Expression {
+    fn from(value: Literal) -> Self {
+        Expression::Raw(RawTypes::Lit(value))
+    }
+}
 
 
 ///if base is non case must contain a row or binary operator

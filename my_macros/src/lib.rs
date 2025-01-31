@@ -1,8 +1,10 @@
+mod type_play;
+
 use proc_macro::TokenStream;
 use std::env::var;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, parse_str, Attribute, Data, DeriveInput, Field, Fields, Path, Token};
+use syn::{parse_macro_input, parse_str, Attribute, Data, DeriveInput, Expr, Field, Fields, Lit, Path, Token};
 use syn::__private::TokenStream2;
 use syn::Member::Unnamed;
 use syn::punctuated::Punctuated;
@@ -221,4 +223,32 @@ pub fn from_derive(input: TokenStream) -> TokenStream {
     }else {
         panic!("no impl for this type 0f data")
     }
+}
+
+
+#[proc_macro]
+pub fn get_literal_type(input: TokenStream) -> TokenStream {
+    let input = syn::parse_macro_input!(input as Expr);
+
+    // Match the expression and extract the type of the literal
+    let ty = match &input {
+        Expr::Lit(expr_lit) => match &expr_lit.lit {
+            Lit::Int(_) => "i32 or u32", // Can be adjusted based on the literal
+            Lit::Float(_) => "f64",
+            Lit::Str(_) => "String or &str", // For string literals, we'll treat them as String or &str
+            Lit::Bool(_) => "bool",
+            _ => "Unknown  Literal",
+        },
+        _ => "Not a Literal",
+    };
+
+    // Generate the code that prints the type of the literal
+    let expanded = quote! {
+        {
+            println!("Literal Type: {}", #ty);
+        }
+    };
+
+    // Return the generated code
+    TokenStream::from(expanded)
 }

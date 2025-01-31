@@ -6,8 +6,11 @@ mod column;
 mod literals;
 mod operators;
 mod create_a_name;
+mod play_types;
+mod safe_expressions;
+mod convertible;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct RawColumn {
     table_name: String,
     name: String,

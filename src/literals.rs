@@ -5,17 +5,31 @@ use crate::literals::Number::*;
 use crate::literals::Literal::*;
 
 
-///Time literal
-// #[derive(Debug)]
-// pub struct Time {
-//
-// }
-//
-// ///Date literal
-// #[derive(Debug)]
-// pub struct Date {
-//
-// }
+#[derive(Debug, Clone, Default)]
+pub struct Time {
+
+}
+
+impl AutoQueryable for Time {}
+impl Queryable for Time {
+    fn convert_to_query(&self) -> Option<String> {
+        Some("time".to_string())
+    }
+}
+
+///Date literal
+#[derive(Debug, Clone, Default)]
+pub struct Date {
+
+}
+
+impl AutoQueryable for Date {}
+
+impl Queryable for Date {
+    fn convert_to_query(&self) -> Option<String> {
+        Some("Date".to_string())
+    }
+}
 
 
 impl AutoQueryable for f32 {}
@@ -40,11 +54,18 @@ pub enum Number {
     Int(i32),
 }
 
+impl Default for Number {
+    fn default() -> Self {
+        Number::Int(0)
+    }
+}
+
 
 //Bool literal
-#[derive(Debug, Clone, Queryable, AutoQueryable)]
+#[derive(Default, Debug, Clone, Queryable, AutoQueryable)]
 #[path = "crate::literals"]
 pub enum Bool {
+    #[default]
     True,
     False
 }
@@ -58,8 +79,14 @@ pub enum Literal {
     BlobLit,
     NULL,
     Bool(Bool),
-    //CurrentTime(Time),
-    //CurrentData(Date),
+    CurrentTime(Time),
+    CurrentData(Date),
+}
+
+impl Default for Literal {
+    fn default() -> Self {
+        NULL
+    }
 }
 
 mod tests {
@@ -81,7 +108,7 @@ mod tests {
         let lit = Literal::Bool(Bool::True);
         assert_eq!(exclude_braces(lit.to_query()), "True");
 
-        let lit = Literal::StringLit("SomeString".to_string());
+        let lit: Literal = Literal::StringLit("SomeString".into());
         assert_eq!(exclude_braces(lit.to_query()), "SomeString");
     }
 }
