@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::iter::Enumerate;
 use my_macros::{AutoQueryable, From, Queryable};
 use crate::{Query, Queryable};
@@ -9,7 +10,7 @@ use crate::convertible::*;
 use crate::literals::Literal::StringLit;
 use crate::operators::LGRM::GLOB;
 use crate::operators::LikeExpression::LikeEscape;
-use crate::operators::Operator::BinOperator;
+use crate::operators::Operator::{BinOperator, NonBinOperator};
 
 /// Collation need its own Expression https://www.sqlite.org/datatype3.html#collation
 ///
@@ -24,6 +25,31 @@ enum CollateType {
     BINARY,
     UNICODE,
 }
+
+/// Casting is not safe, in case of type incompatibility will not result in compile time error
+#[derive(Debug, Clone, AutoQueryable, Queryable)]
+#[path = "crate::operators"]
+enum CastType {
+    TEXT,
+    REAL,
+    INTEGER,
+    BLOB,
+    NUMERIC,
+}
+impl From<String> for CastType {
+    fn from(value: ( String )) -> Self { CastType::TEXT }
+}
+impl From<( f32 )> for CastType {
+    fn from(value: ( f32 )) -> Self { Self::REAL}
+}
+impl From<( i32 )> for CastType {
+    fn from(value: ( i32 )) -> Self { Self::INTEGER }
+}
+impl From<( Number )> for CastType {
+    fn from(value: ( Number )) -> Self { Self::NUMERIC }
+}
+
+
 
 /// Extract Operator https://www.sqlite.org/json1.html#jptr
 ///
@@ -440,6 +466,7 @@ impl Queryable for Binary {
 #[path = "crate::operators"]
 enum NonBinary {
     Collate(Expression, CollateType),
+    Cast(Expression, CastType),
     ExtractOperator(Expression, ExtractOperator),
 }
 
@@ -449,9 +476,34 @@ impl Queryable for NonBinary {
             NonBinary::Collate(expr, _type) => {
                 Some(format!("{} COLLATE {}", expr.to_query(), _type.to_query()))
             }
+            NonBinary::Cast(expr, _type) => {
+                Some(format!("CAST ({} AS {})", expr.to_query(), _type.to_query()))
+            }
             NonBinary::ExtractOperator(_, _) => {
                 None
             }
+            _ => {
+                None
+            }
+        }
+    }
+}
+
+impl<T> SafeExpr<T> {
+    pub fn collate(self, ct: CollateType) -> SafeExpr<String>
+    where T: ConvertibleTo<String>
+    {
+        SafeExpr {
+            type_val: String::default(),
+            expr: Expression::OperatorExpr(Box::new(Operator::NonBinOperator(NonBinary::Collate(self.expr, ct)))),
+        }
+    }
+
+    pub fn cast<U>(self) -> SafeExpr<U>
+    where U: Into<CastType> + Default{
+        SafeExpr {
+            type_val: U::default(),
+            expr: Expression::OperatorExpr(Box::new(NonBinOperator(NonBinary::Cast(self.expr, U::default().into()))))
         }
     }
 }
@@ -460,7 +512,7 @@ impl Queryable for NonBinary {
 #[path = "crate::operators"]
 pub enum Operator {
     /// Only used for strings
-    Concatenate(Expression, Expression, Expression),
+    Concatenate(Expression, Expression),
     BinOperator(Binary),
     NonBinOperator(NonBinary),
 }
@@ -468,10 +520,23 @@ pub enum Operator {
 impl Queryable for Operator {
     fn convert_to_query(&self) -> Option<String> {
         match self {
-            Operator::Concatenate(expr1, divide, expr2) => {
-                Some(format!("CONCAT({}, {}, {})", expr1.to_query(), divide.to_query(), expr2.to_query()))
+            Operator::Concatenate(expr1, expr2) => {
+                Some(format!("({} || {})", expr1.to_query(), expr2.to_query()))
             },
             _ => None,
+        }
+    }
+}
+
+impl<T> SafeExpr<T> {
+    pub fn concatenate<U>(self, expr: SafeExpr<U>) -> SafeExpr<String>
+    where
+        U: ConvertibleTo<String>,
+        T: ConvertibleTo<String>,
+    {
+        SafeExpr {
+            type_val: String::default(),
+            expr: Expression::OperatorExpr(Box::new(Operator::Concatenate(self.expr, expr.expr))),
         }
     }
 }
@@ -481,7 +546,9 @@ mod tests {
     use crate::expressions::{Expression, RawTypes};
     use crate::literals::{Bool, Literal, Number};
     use crate::literals::Bool::False;
-    use crate::operators::{ArithmeticOperator, Binary, LogicalOperator, Operator};
+    use crate::operators::{ArithmeticOperator, Binary, CastType, LogicalOperator, Operator};
+    use crate::operators::NonBinary::Cast;
+    use crate::operators::Operator::NonBinOperator;
     use crate::safe_expressions::SafeExpr;
 
     fn exclude_braces(mut query: String) -> String {
@@ -544,6 +611,20 @@ mod tests {
     fn comparison_operator() {
         let operator1: Expression = Literal::NumberLit(10.into()).into();
         assert_eq!("10", exclude_braces(operator1.to_query()))
+    }
+
+    #[test]
+    fn cast_operator() {
+        let operator = Expression::OperatorExpr(Box::new(NonBinOperator(Cast(Literal::NumberLit(10.into()).into(), CastType::INTEGER))));
+
+        assert_eq!("CAST 10 AS INTEGER", exclude_braces(operator.to_query()));
+
+        let safe_expression = SafeExpr { type_val: 10, expr: operator }.cast::<String>().like("%like_this", None);
+        //let wrong_safe_expression = SafeExpr { type_val: 10, expr: operator }.like("%like_this", None);
+
+        println!("{}", safe_expression.expr.to_query());
+
+        //assert_eq!("CAST CAST 10 AS INTEGER AS TEXT", exclude_braces(safe_expression.expr.to_query()));
     }
 
     #[test]
