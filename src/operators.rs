@@ -72,7 +72,7 @@ where T: Queryable
 
 impl<T> SafeExpr<T> {
     pub fn not(self) -> SafeExpr<T>
-    where T: ConvertibleTo<Literal>
+    where T: ConvertibleTo<Bool>
     {
         SafeExpr {
             type_val: self.type_val,
@@ -648,8 +648,10 @@ mod tests {
 
         assert_eq!("10 + 10", exclude_braces(add_operator.expr.to_query()));
 
-        let like_expr = SafeExpr::basic("hello_man".to_string()).like("%hello", None);
+        let like_expr = SafeExpr::basic("hello_man".to_string()).like("%hello", None).not();
 
-        assert_eq!("hello_man LIKE %hello", exclude_braces(like_expr.expr.to_query()));
+        println!("{}", like_expr.expr.to_query());
+
+        assert_eq!("NOT hello_man LIKE %hello", exclude_braces(like_expr.expr.to_query()));
     }
 }

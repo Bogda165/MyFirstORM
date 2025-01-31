@@ -1,11 +1,14 @@
 use crate::expressions::Expression::*;
 use std::io::read_to_string;
 use std::iter::Filter;
+use std::marker::PhantomData;
 use my_macros::{AutoQueryable, From, Queryable};
 use crate::{Column, RawColumn};
+use crate::convertible::ConvertibleTo;
 use crate::create_a_name::{AutoQueryable, Queryable};
 use crate::literals::{Bool, Literal, Number};
 use crate::operators::Operator;
+use crate::safe_expressions::SafeExpr;
 
 #[derive(Debug, AutoQueryable, Clone, Queryable, From)]
 #[path = "crate::expressions"]
@@ -90,10 +93,78 @@ impl Queryable for CaseExpr {
     }
 }
 
+struct SafeCase<ThenT> {
+    _marker: PhantomData<ThenT>,
+    case_expr: CaseExpr,
+}
+
+impl<ThenT: Default> SafeCase<ThenT> {
+    pub fn when_do<T, U>(mut self, when: SafeExpr<T>, then: SafeExpr<U>) -> Self
+    where
+        T: ConvertibleTo<Bool>,
+        U: ConvertibleTo<ThenT>,
+    {
+        self.case_expr.case.push((when.expr, then.expr));
+        self
+    }
+
+    pub fn end(self) -> SafeExpr<ThenT>
+    where ThenT: Default
+    {
+        SafeExpr {
+            type_val: ThenT::default(),
+            expr: Expression::CaseExpr(Box::new(self.case_expr)),
+        }
+    }
+}
+
+
+impl<T> SafeExpr<T> {
+    pub fn case_else(else_expr: SafeExpr<T>) -> SafeCase<T>
+    {
+       SafeCase::<T> {
+           _marker: PhantomData,
+           case_expr: CaseExpr {
+               base_expr: None,
+               case: vec![],
+               else_expr: else_expr.expr,
+           }
+       }
+    }
+}
+
 impl AutoQueryable for String {}
 
 impl Queryable for String {
     fn convert_to_query(&self) -> Option<String> {
-        Some(self.clone())
+        Some(format!("\"{}\"", self.clone()))
+    }
+}
+
+
+mod tests {
+    use crate::create_a_name::Queryable;
+    use crate::expressions::RawTypes;
+    use crate::safe_expressions::SafeExpr;
+
+    #[test]
+    fn case_expr() {
+        let some_val =
+            SafeExpr::case_else(
+                SafeExpr::basic("hello".to_string())
+            )
+            .when_do(
+                SafeExpr::basic(10)
+                    .more(SafeExpr::basic(14)),
+                SafeExpr::basic("its more man".to_string()))
+            .when_do(
+                SafeExpr::basic(10)
+                    .to_string()
+                    .like("%10", None),
+                SafeExpr::basic("Its correct string".to_string())
+            )
+            .end();
+
+        println!("{}", some_val.expr.to_query());
     }
 }
