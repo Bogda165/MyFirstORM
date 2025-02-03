@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use crate::column::Table;
+use crate::column::{Allowed, Column, Table};
 use crate::expressions::{Expression, RawTypes};
 pub struct SafeExpr<ExprType, AllowedTables> {
     pub tables: PhantomData<AllowedTables>,
@@ -36,6 +36,15 @@ impl<ExprType, AllowedTables> SafeExpr<ExprType, AllowedTables>
             type_val: PhantomData::<ExprType>,
             expr: Expression::Raw(val.into()),
         }
+    }
+
+    pub fn column() -> SafeExpr<<ExprType as Column>::Type, AllowedTables>
+    where
+        ExprType: Column,
+        AllowedTables: Allowed<<ExprType as Column>::Table>,
+        <ExprType as Column>::Type: Into<RawTypes>,
+    {
+        SafeExpr::new(Expression::Raw(ExprType::get_name().into()))
     }
 }
 

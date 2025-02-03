@@ -66,6 +66,8 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
             table.fields.iter_mut().map(|field| {
                 let attrs_amount = field.attrs.len();
                 let field_name = field.clone().ident.unwrap();
+                let field_type = field.clone().ty;
+                let field_name_string = field_name.clone().to_string();
 
                 match field.attrs.iter().zip(0..attrs_amount)
                     .find(|(attr, index)| {
@@ -84,6 +86,11 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
 
                             impl Column for #field_name {
                                 type Table = #table_name;
+                                type Type = #field_type;
+
+                                fn get_name() -> String {
+                                    #field_name_string.to_string()
+                                }
                             }
                         }
                     }
@@ -100,9 +107,6 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
 
 
     quote! {
-        use crate::Allowed;
-        use crate::Table;
-        use crate::Column;
 
         impl Table for #table_name {}
         impl Allowed<#table_name> for #table_name {}

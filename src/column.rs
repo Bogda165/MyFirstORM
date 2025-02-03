@@ -12,6 +12,9 @@ impl Table for () {}
 pub trait Column {
     /// Type of the columns table
     type Table;
+    type Type;
+
+    fn get_name() -> String;
 }
 
 /// Trait that is used for compile time check, of availability of the column in table group
