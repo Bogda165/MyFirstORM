@@ -6,6 +6,8 @@ use crate::safe_expressions::SafeExpr;
 /// trait that should implement every table, impl with #[table] macro
 pub trait Table {}
 
+impl Table for () {}
+
 /// Trait of a column in the table, impl using #[table] macro, and attribute #[column]
 pub trait Column {
     /// Type of the columns table

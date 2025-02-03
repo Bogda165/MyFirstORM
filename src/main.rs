@@ -9,6 +9,7 @@ mod create_a_name;
 mod play_types;
 mod safe_expressions;
 mod convertible;
+mod query;
 
 #[derive(Debug, Clone, Default)]
 struct RawColumn {

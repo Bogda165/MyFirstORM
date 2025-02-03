@@ -71,11 +71,12 @@ where T: Queryable
     Expr(T),
 }
 
-impl<T> SafeExpr<T> {
-    pub fn not(self) -> SafeExpr<T>
+impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn not(self) -> SafeExpr<T, AllowedTables>
     where T: ConvertibleTo<Bool>
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: self.type_val,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(Binary::NOT(NotExpression::NOT(self.expr))))),
         }
@@ -155,8 +156,8 @@ enum LGRM{
     MATCH(Expression, Expression),
 }
 
-impl<T> SafeExpr<T> {
-    pub fn like(self, like_string: &str, escape: Option<char>) -> SafeExpr<Bool>
+impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn like(self, like_string: &str, escape: Option<char>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<String>
     {
@@ -169,12 +170,13 @@ impl<T> SafeExpr<T> {
         };
 
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(BinOperator(NotExpression::Expr(LGRM::Like(expr)).into()))),
         }
     }
 
-    pub fn glob(self, like_string: &str, escape: Option<char>) -> SafeExpr<Bool>
+    pub fn glob(self, like_string: &str, escape: Option<char>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<String>
     {
@@ -182,12 +184,13 @@ impl<T> SafeExpr<T> {
         let case_string: Expression = Expression::Raw(Literal::StringLit(like_string.to_string()).into());
 
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(BinOperator(NotExpression::Expr(LGRM::GLOB(self.expr, case_string)).into()))),
         }
     }
 
-    pub fn match_expr(self, like_string: &str, escape: Option<char>) -> SafeExpr<Bool>
+    pub fn match_expr(self, like_string: &str, escape: Option<char>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<String>
     {
@@ -195,13 +198,14 @@ impl<T> SafeExpr<T> {
         let case_string: Expression = Expression::Raw(Literal::StringLit(like_string.to_string()).into());
 
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(BinOperator(NotExpression::Expr(LGRM::MATCH(self.expr, case_string)).into()))),
         }
     }
 
     ///Later connect with some regex library
-    pub fn regex(self, like_string: &str, escape: Option<char>) -> SafeExpr<Bool>
+    pub fn regex(self, like_string: &str, escape: Option<char>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<String>
     {
@@ -209,6 +213,7 @@ impl<T> SafeExpr<T> {
         let case_string: Expression = Expression::Raw(Literal::StringLit(like_string.to_string()).into());
 
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(BinOperator(NotExpression::Expr(LGRM::REGEXP(self.expr, case_string)).into()))),
         }
@@ -225,35 +230,38 @@ enum LogicalOperator {
     XOR(Expression, Expression),
 }
 
-impl<T> SafeExpr<T> {
-    pub fn and<U> (self, expr: SafeExpr<U>) -> SafeExpr<Bool>
+impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn and<U> (self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<Bool>,
         U: ConvertibleTo<Bool>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(LogicalOperator::AND(self.expr, expr.expr).into())))
         }
     }
 
-    pub fn or<U> (self, expr: SafeExpr<U>) -> SafeExpr<Bool>
+    pub fn or<U> (self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<Bool>,
         U: ConvertibleTo<Bool>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(LogicalOperator::OR(self.expr, expr.expr).into())))
         }
     }
 
-    pub fn xor<U> (self, expr: SafeExpr<U>) -> SafeExpr<Bool>
+    pub fn xor<U> (self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<Bool>,
         U: ConvertibleTo<Bool>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(LogicalOperator::XOR(self.expr, expr.expr).into())))
         }
@@ -271,38 +279,41 @@ enum ComparisonOperator {
     Equal(Expression, Expression),
 }
 
-impl<T> SafeExpr<T> {
-    pub fn less<U> (self, expr: SafeExpr<U>) -> SafeExpr<Bool>
+impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn less<U> (self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<Literal> + Conversation<U>,
         U: ConvertibleTo<Literal> + Conversation<T>,
 
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ComparisonOperator::Less(self.expr, expr.expr).into())))
         }
     }
 
-    pub fn more<U> (self, expr: SafeExpr<U>) -> SafeExpr<Bool>
+    pub fn more<U> (self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<Literal> + Conversation<U>,
         U: ConvertibleTo<Literal> + Conversation<T>,
 
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ComparisonOperator::More(self.expr, expr.expr).into())))
         }
     }
 
-    pub fn equal<U> (self, expr: SafeExpr<U>) -> SafeExpr<Bool>
+    pub fn equal<U> (self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Bool, AllowedTables>
     where
         T: ConvertibleTo<Literal> + Conversation<U>,
         U: ConvertibleTo<Literal> + Conversation<T>,
 
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ComparisonOperator::Equal(self.expr, expr.expr).into())))
         }
@@ -322,57 +333,62 @@ enum ArithmeticOperator {
     MOD(Expression, Expression),
 }
 
-impl<T> SafeExpr<T> {
-    pub fn add<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn add<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<Number> + Conversation<U>,
         U: ConvertibleTo<Number> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::ADD(self.expr, expr.expr).into()))),
         }
     }
 
-    pub fn sub<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+    pub fn sub<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<Number> + Conversation<U>,
         U: ConvertibleTo<Number> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::SUB(self.expr, expr.expr).into()))),
         }
     }
 
-    pub fn mul<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+    pub fn mul<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<Number> + Conversation<U>,
         U: ConvertibleTo<Number> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::MUL(self.expr, expr.expr).into()))),
         }
     }
 
-    pub fn div<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+    pub fn div<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<Number> + Conversation<U>,
         U: ConvertibleTo<Number> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::DIV(self.expr, expr.expr).into()))),
         }
     }
 
-    pub fn module<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+    pub fn module<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<i32> + Conversation<U>,
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::ADD(self.expr, expr.expr).into()))),
         }
@@ -390,44 +406,48 @@ enum BitwiseOperator {
     RightShift(Expression, Expression),
 }
 
-impl<T> SafeExpr<T> {
-    pub fn bit_and<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn bit_and<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<i32> + Conversation<U>,
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(BitwiseOperator::AND(self.expr, expr.expr).into()))),
         }
     }
-    pub fn bit_or<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+    pub fn bit_or<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<i32> + Conversation<U>,
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(BitwiseOperator::OR(self.expr, expr.expr).into()))),
         }
     }
 
-    pub fn left_shift<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+    pub fn left_shift<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<i32> + Conversation<U>,
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(BitwiseOperator::LeftShift(self.expr, expr.expr).into()))),
         }
     }
-    pub fn right_shift<U>(self, expr: SafeExpr<U>) -> SafeExpr<Number>
+    pub fn right_shift<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<Number, AllowedTables>
     where
         T: ConvertibleTo<i32> + Conversation<U>,
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(BitwiseOperator::RightShift(self.expr, expr.expr).into()))),
         }
@@ -490,19 +510,21 @@ impl Queryable for NonBinary {
     }
 }
 
-impl<T> SafeExpr<T> {
-    pub fn collate(self, ct: CollateType) -> SafeExpr<String>
+impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn collate(self, ct: CollateType) -> SafeExpr<String, AllowedTables>
     where T: ConvertibleTo<String>
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<String>,
             expr: Expression::OperatorExpr(Box::new(Operator::NonBinOperator(NonBinary::Collate(self.expr, ct)))),
         }
     }
 
-    pub fn cast<U>(self) -> SafeExpr<U>
+    pub fn cast<U>(self) -> SafeExpr<U, AllowedTables>
     where U: Into<CastType> + Default{
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<U>,
             expr: Expression::OperatorExpr(Box::new(NonBinOperator(NonBinary::Cast(self.expr, U::default().into()))))
         }
@@ -529,13 +551,14 @@ impl Queryable for Operator {
     }
 }
 
-impl<T> SafeExpr<T> {
-    pub fn concatenate<U>(self, expr: SafeExpr<U>) -> SafeExpr<String>
+impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn concatenate<U>(self, expr: SafeExpr<U, AllowedTables>) -> SafeExpr<String, AllowedTables>
     where
         U: ConvertibleTo<String>,
         T: ConvertibleTo<String>,
     {
         SafeExpr {
+            tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<String>,
             expr: Expression::OperatorExpr(Box::new(Operator::Concatenate(self.expr, expr.expr))),
         }
@@ -621,8 +644,8 @@ mod tests {
 
         assert_eq!("CAST 10 AS INTEGER", exclude_braces(operator.to_query()));
 
-        let safe_expression = SafeExpr::<i32>::new(operator).cast::<String>().like("%like_this", None);
-        //let wrong_safe_expression = SafeExpr { type_val: 10, expr: operator }.like("%like_this", None);
+        let safe_expression = SafeExpr::<i32, ()>::new(operator).cast::<String>().like("%like_this", None);
+        //let wrong_safe_expression = SafeExpr::<i32> {expr: operator }.like("%like_this", None);
 
         println!("{}", safe_expression.expr.to_query());
 
@@ -631,18 +654,18 @@ mod tests {
 
     #[test]
     fn safe_expressions() {
-        let lit = SafeExpr::basic(Bool::True);
+        let lit: SafeExpr<_, ()> = SafeExpr::basic(Bool::True);
         let and_operator = lit.and(SafeExpr::basic(Bool::False));
 
         assert_eq!("True AND False", exclude_braces(and_operator.expr.to_query()));
 
-        let less_operator = SafeExpr::basic(10).less(SafeExpr::basic(10.15));
+        let less_operator: SafeExpr<_, ()> = SafeExpr::basic(10).less(SafeExpr::basic(10.15));
 
         assert_eq!("10 < 10.15", exclude_braces(less_operator.expr.to_query()));
 
         //let wrong_less_operator = SafeExpr::basic(10.124).less(SafeExpr::basic(Bool::True));
 
-        let add_operator = SafeExpr::basic(10).add(SafeExpr::basic(10));
+        let add_operator: SafeExpr<_, ()> = SafeExpr::basic(10).add(SafeExpr::basic(10));
 
         //let wrong_add_operator = SafeExpr::basic(10).add(SafeExpr::basic(Bool::True));
 
@@ -650,7 +673,7 @@ mod tests {
 
         assert_eq!("10 + 10", exclude_braces(add_operator.expr.to_query()));
 
-        let like_expr = SafeExpr::basic("hello_man".to_string()).like("%hello", None).not();
+        let like_expr: SafeExpr<_, ()> = SafeExpr::basic("hello_man".to_string()).like("%hello", None).not();
 
         println!("{}", like_expr.expr.to_query());
 
