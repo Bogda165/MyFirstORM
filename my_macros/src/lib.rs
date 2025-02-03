@@ -1,13 +1,15 @@
 mod type_play;
+mod table_def;
 
 use proc_macro::TokenStream;
 use std::env::var;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, parse_str, Attribute, Data, DeriveInput, Expr, Field, Fields, Lit, Path, Token};
+use syn::{parse_macro_input, parse_str, Attribute, Data, DeriveInput, Expr, Field, Fields, Lit, Path, Token, Type};
 use syn::__private::TokenStream2;
 use syn::Member::Unnamed;
 use syn::punctuated::Punctuated;
+use crate::table_def::{impl_from, impl_table};
 
 fn get_module_path(attrs: &Vec<Attribute>, enum_name: String) -> Path {
     let module_path = match attrs.iter().find(|attr| attr.path.is_ident("path")) {
@@ -251,4 +253,20 @@ pub fn get_literal_type(input: TokenStream) -> TokenStream {
 
     // Return the generated code
     TokenStream::from(expanded)
+}
+
+#[proc_macro]
+// This macro must be used in the root of the project to generate multiple tables types
+pub fn from(input: TokenStream) -> TokenStream {
+
+    let types = parse_macro_input!(input with Punctuated::<Type, Token![,]>::parse_terminated);
+
+    TokenStream::from(impl_from(types))
+}
+
+#[proc_macro_attribute]
+pub fn table(_attrs: TokenStream, input: TokenStream) -> TokenStream {
+    let mut table = parse_macro_input!(input as DeriveInput);
+
+    TokenStream::from(impl_table(table))
 }

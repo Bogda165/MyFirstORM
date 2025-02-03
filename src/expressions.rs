@@ -112,7 +112,7 @@ impl<ThenT: Default> SafeCase<ThenT> {
     where ThenT: Default
     {
         SafeExpr {
-            type_val: ThenT::default(),
+            type_val: PhantomData::<ThenT>,
             expr: Expression::CaseExpr(Box::new(self.case_expr)),
         }
     }

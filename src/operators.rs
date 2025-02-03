@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::iter::Enumerate;
+use std::marker::PhantomData;
 use my_macros::{AutoQueryable, From, Queryable};
 use crate::{Query, Queryable};
 use crate::create_a_name::AutoQueryable;
@@ -168,7 +169,7 @@ impl<T> SafeExpr<T> {
         };
 
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(BinOperator(NotExpression::Expr(LGRM::Like(expr)).into()))),
         }
     }
@@ -181,7 +182,7 @@ impl<T> SafeExpr<T> {
         let case_string: Expression = Expression::Raw(Literal::StringLit(like_string.to_string()).into());
 
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(BinOperator(NotExpression::Expr(LGRM::GLOB(self.expr, case_string)).into()))),
         }
     }
@@ -194,7 +195,7 @@ impl<T> SafeExpr<T> {
         let case_string: Expression = Expression::Raw(Literal::StringLit(like_string.to_string()).into());
 
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(BinOperator(NotExpression::Expr(LGRM::MATCH(self.expr, case_string)).into()))),
         }
     }
@@ -208,7 +209,7 @@ impl<T> SafeExpr<T> {
         let case_string: Expression = Expression::Raw(Literal::StringLit(like_string.to_string()).into());
 
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(BinOperator(NotExpression::Expr(LGRM::REGEXP(self.expr, case_string)).into()))),
         }
     }
@@ -231,7 +232,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<Bool>,
     {
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(LogicalOperator::AND(self.expr, expr.expr).into())))
         }
     }
@@ -242,7 +243,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<Bool>,
     {
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(LogicalOperator::OR(self.expr, expr.expr).into())))
         }
     }
@@ -253,7 +254,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<Bool>,
     {
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(LogicalOperator::XOR(self.expr, expr.expr).into())))
         }
     }
@@ -278,7 +279,7 @@ impl<T> SafeExpr<T> {
 
     {
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ComparisonOperator::Less(self.expr, expr.expr).into())))
         }
     }
@@ -290,7 +291,7 @@ impl<T> SafeExpr<T> {
 
     {
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ComparisonOperator::More(self.expr, expr.expr).into())))
         }
     }
@@ -302,7 +303,7 @@ impl<T> SafeExpr<T> {
 
     {
         SafeExpr {
-            type_val: Bool::default(),
+            type_val: PhantomData::<Bool>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ComparisonOperator::Equal(self.expr, expr.expr).into())))
         }
     }
@@ -328,7 +329,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<Number> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::ADD(self.expr, expr.expr).into()))),
         }
     }
@@ -339,7 +340,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<Number> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::SUB(self.expr, expr.expr).into()))),
         }
     }
@@ -350,7 +351,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<Number> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::MUL(self.expr, expr.expr).into()))),
         }
     }
@@ -361,7 +362,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<Number> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::DIV(self.expr, expr.expr).into()))),
         }
     }
@@ -372,7 +373,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(ArithmeticOperator::ADD(self.expr, expr.expr).into()))),
         }
     }
@@ -396,7 +397,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(BitwiseOperator::AND(self.expr, expr.expr).into()))),
         }
     }
@@ -406,7 +407,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(BitwiseOperator::OR(self.expr, expr.expr).into()))),
         }
     }
@@ -417,7 +418,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(BitwiseOperator::LeftShift(self.expr, expr.expr).into()))),
         }
     }
@@ -427,7 +428,7 @@ impl<T> SafeExpr<T> {
         U: ConvertibleTo<i32> + Conversation<T>,
     {
         SafeExpr {
-            type_val: Number::default(),
+            type_val: PhantomData::<Number>,
             expr: Expression::OperatorExpr(Box::new(Operator::BinOperator(BitwiseOperator::RightShift(self.expr, expr.expr).into()))),
         }
     }
@@ -494,7 +495,7 @@ impl<T> SafeExpr<T> {
     where T: ConvertibleTo<String>
     {
         SafeExpr {
-            type_val: String::default(),
+            type_val: PhantomData::<String>,
             expr: Expression::OperatorExpr(Box::new(Operator::NonBinOperator(NonBinary::Collate(self.expr, ct)))),
         }
     }
@@ -502,7 +503,7 @@ impl<T> SafeExpr<T> {
     pub fn cast<U>(self) -> SafeExpr<U>
     where U: Into<CastType> + Default{
         SafeExpr {
-            type_val: U::default(),
+            type_val: PhantomData::<U>,
             expr: Expression::OperatorExpr(Box::new(NonBinOperator(NonBinary::Cast(self.expr, U::default().into()))))
         }
     }
@@ -535,13 +536,14 @@ impl<T> SafeExpr<T> {
         T: ConvertibleTo<String>,
     {
         SafeExpr {
-            type_val: String::default(),
+            type_val: PhantomData::<String>,
             expr: Expression::OperatorExpr(Box::new(Operator::Concatenate(self.expr, expr.expr))),
         }
     }
 }
 
 mod tests {
+    use std::marker::PhantomData;
     use crate::create_a_name::Queryable;
     use crate::expressions::{Expression, RawTypes};
     use crate::literals::{Bool, Literal, Number};
@@ -619,7 +621,7 @@ mod tests {
 
         assert_eq!("CAST 10 AS INTEGER", exclude_braces(operator.to_query()));
 
-        let safe_expression = SafeExpr { type_val: 10, expr: operator }.cast::<String>().like("%like_this", None);
+        let safe_expression = SafeExpr::<i32>::new(operator).cast::<String>().like("%like_this", None);
         //let wrong_safe_expression = SafeExpr { type_val: 10, expr: operator }.like("%like_this", None);
 
         println!("{}", safe_expression.expr.to_query());
@@ -652,6 +654,6 @@ mod tests {
 
         println!("{}", like_expr.expr.to_query());
 
-        assert_eq!("NOT hello_man LIKE %hello", exclude_braces(like_expr.expr.to_query()));
+        assert_eq!("NOT \"hello_man\" LIKE \"%hello\"", exclude_braces(like_expr.expr.to_query()));
     }
 }

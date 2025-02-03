@@ -1,13 +1,14 @@
+use std::marker::PhantomData;
 use crate::expressions::{Expression, RawTypes};
 pub struct SafeExpr<T> {
-    pub(crate) type_val: T,
+    pub(crate) type_val: PhantomData<T>,
     pub(crate) expr: Expression,
 }
 
 impl<T> SafeExpr<T> {
-    pub fn new(type_val: T, expr: Expression) -> Self {
+    pub fn new(expr: Expression) -> Self {
         SafeExpr{
-            type_val,
+            type_val: PhantomData::<T>,
             expr,
         }
     }
@@ -16,17 +17,17 @@ impl<T> SafeExpr<T> {
 
     pub fn to_string(self) -> SafeExpr<String> {
         SafeExpr{
-            type_val: String::default(),
+            type_val: PhantomData::<String>,
             expr: self.expr,
         }
     }
 
     pub fn basic(val: T) -> SafeExpr<T>
     where
-        T: Into<RawTypes> + Clone
+        T: Into<RawTypes>
     {
         SafeExpr {
-            type_val: val.clone(),
+            type_val: PhantomData::<T>,
             expr: Expression::Raw(val.into()),
         }
     }
@@ -41,7 +42,7 @@ mod tests {
     #[test]
     fn get_basic_type() {
         let basic = SafeExpr::basic(Number::Int(10));
-        let check = SafeExpr::new(Literal::NumberLit(10.into()), Expression::Raw(Literal::NumberLit(10.into()).into()).into());
+        let check = SafeExpr::<Literal>::new(Expression::Raw(Literal::NumberLit(10.into()).into()).into());
 
         println!("{}", basic.expr.to_query());
 

@@ -1,14 +1,5 @@
 use crate::column::Column;
 
-struct Query {
-    columns: Vec<Column>
-}
-
-impl Query {
-    pub fn select(self) {
-        unreachable!()
-    }
-}
 /// Implement this trait with derive macro if you want to generate auto transformation into query. Read mor ein macro
 pub trait AutoQueryable {
     fn to_query_auto(&self) -> Option<String> {
