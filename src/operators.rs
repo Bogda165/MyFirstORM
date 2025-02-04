@@ -5,7 +5,7 @@ use my_macros::{AutoQueryable, From, Queryable};
 use crate::{Query, Queryable};
 use crate::create_a_name::AutoQueryable;
 use crate::expressions::{Expression, RawTypes};
-use crate::literals::{Bool, Literal, Number};
+use crate::literals::{Bool, Literal, Null, Number};
 use crate::safe_expressions::*;
 use crate::convertible::*;
 use crate::literals::Literal::StringLit;
@@ -103,11 +103,41 @@ where T: Queryable
 
 /// Working with NULLS
 ///
-#[derive(Debug, Clone, Queryable, AutoQueryable)]
+#[derive(Debug, Clone, AutoQueryable)]
 #[path = "crate::operators"]
 pub enum NULLsExpression {
-    IsNULL(Expression),
-    IsNotNULL(Expression),
+    ISNULL(Expression),
+    ISNOTNULL(Expression),
+}
+
+impl Queryable for NULLsExpression {
+    fn convert_to_query(&self) -> Option<String> {
+        match self {
+            NULLsExpression::ISNULL(expr) => {Some(format!("(ISNULL {})", expr.to_query()))}
+            NULLsExpression::ISNOTNULL(expr) => {Some(format!("(ISNOTNULL {})", expr.to_query()))}
+        }
+    }
+}
+
+impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
+    pub fn is_null(self) -> SafeExpr<Bool, AllowedTables>
+    where
+        T: ConvertibleTo<Null>
+    {
+        SafeExpr::new(
+            Expression::OperatorExpr(Box::new(Operator::BinOperator(NotExpression::Expr(NULLsExpression::ISNULL(self.expr)).into())))
+        )
+    }
+
+    pub fn is_not_null(self) -> SafeExpr<Bool, AllowedTables>
+    where
+        T: ConvertibleTo<Null>
+    {
+        SafeExpr::new(
+            Expression::OperatorExpr(Box::new(Operator::BinOperator(NotExpression::Expr(NULLsExpression::ISNOTNULL(self.expr)).into())))
+        )
+
+    }
 }
 
 ///Like Expression
@@ -679,4 +709,5 @@ mod tests {
 
         assert_eq!("NOT \"hello_man\" LIKE \"%hello\"", exclude_braces(like_expr.expr.to_query()));
     }
+
 }

@@ -23,6 +23,12 @@ macro_rules! convertible {
         impl Conversation<$to> for $from {type Result = $to; }
         impl Conversation<$from> for $to {type Result = $to; }
     };
+
+    ($from:ty, $to:ty, $result:ty) => {
+        impl ConvertibleTo<$to> for $from {}
+        impl Conversation<$to> for $from {type Result = $result; }
+        impl Conversation<$from> for $to {type Result = $result; }
+    };
 }
 
 
@@ -86,13 +92,13 @@ convertible!(RawColumn, Literal);
 convertible!(i32, Literal);
 convertible!(f32, Literal);
 
-convertible!(Number, Null);
-convertible!(String, Null);
-convertible!(Time, Null);
-convertible!(Date, Null);
-convertible!(RawColumn, Null);
-convertible!(i32, Null);
-convertible!(f32, Null);
+convertible!(Null, Number, Null );
+convertible!(Null, String, Null);
+convertible!(Null, Time, Null);
+convertible!(Null, Date, Null);
+convertible!(Null, RawColumn, Null);
+convertible!(Null, i32, Null);
+convertible!(Null, f32, Null);
 
 
 conversation!(Bool, Number, Bool, Bool);

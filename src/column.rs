@@ -60,6 +60,8 @@ mod column_tests {
         }
     }
 
+   impl ConvertibleTo<Null> for UsersColumn {}
+
 
     impl Into<RawTypes> for UsersColumn {
         fn into(self) -> RawTypes {
@@ -81,6 +83,14 @@ mod column_tests {
         assert_eq!("users_column + 10", exclude_braces(safe_expr.expr.to_query()));
     }
 
+    #[test]
+    fn null_expressions() {
+        let expr: SafeExpr<_, ()> = SafeExpr::<UsersColumn, _>::column().is_null();
+
+        //let wrong_expr: SafeExpr<_, ()> = SafeExpr::basic(10).is_null();
+
+        println!("{}", expr.expr.to_query())
+    }
 }
 
 
