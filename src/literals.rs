@@ -4,6 +4,18 @@ use crate::expressions::Expression;
 use crate::literals::Number::*;
 use crate::literals::Literal::*;
 
+#[derive(Debug, Clone, Default)]
+pub struct Null {
+
+}
+
+impl AutoQueryable for Null {}
+
+impl Queryable for Null {
+    fn convert_to_query(&self) -> Option<String> {
+       Some("NULL".to_string())
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct Time {
@@ -70,6 +82,7 @@ pub enum Bool {
     False
 }
 
+
 /// Literals
 #[derive(Debug, Clone, Queryable, AutoQueryable, From)]
 #[path = "crate::literals"]
@@ -77,7 +90,7 @@ pub enum Literal {
     NumberLit(Number),
     StringLit(String),
     BlobLit,
-    NULL,
+    NULL(Null),
     Bool(Bool),
     CurrentTime(Time),
     CurrentData(Date),
@@ -85,7 +98,7 @@ pub enum Literal {
 
 impl Default for Literal {
     fn default() -> Self {
-        NULL
+        Null::default().into()
     }
 }
 

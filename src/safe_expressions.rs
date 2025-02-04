@@ -1,13 +1,14 @@
 use std::marker::PhantomData;
 use crate::column::{Allowed, Column, Table};
+use crate::convertible::TheType;
 use crate::expressions::{Expression, RawTypes};
-pub struct SafeExpr<ExprType, AllowedTables> {
+pub struct SafeExpr<ExprType: TheType, AllowedTables> {
     pub tables: PhantomData<AllowedTables>,
     pub(crate) type_val: PhantomData<ExprType>,
     pub(crate) expr: Expression,
 }
 
-impl<ExprType, AllowedTables> SafeExpr<ExprType, AllowedTables>
+impl<ExprType: TheType, AllowedTables> SafeExpr<ExprType, AllowedTables>
 {
     pub fn new(expr: Expression) -> Self {
         SafeExpr{
@@ -38,13 +39,12 @@ impl<ExprType, AllowedTables> SafeExpr<ExprType, AllowedTables>
         }
     }
 
-    pub fn column() -> SafeExpr<<ExprType as Column>::Type, AllowedTables>
+    pub fn column() -> SafeExpr<ExprType, AllowedTables>
     where
         ExprType: Column,
         AllowedTables: Allowed<<ExprType as Column>::Table>,
-        <ExprType as Column>::Type: Into<RawTypes>,
     {
-        SafeExpr::new(Expression::Raw(ExprType::get_name().into()))
+        SafeExpr::new(Expression::Raw(ExprType::into(ExprType::default())))
     }
 }
 

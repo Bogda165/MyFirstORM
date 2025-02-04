@@ -86,7 +86,6 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
 
                             impl Column for #field_name {
                                 type Table = #table_name;
-                                type Type = #field_type;
 
                                 fn get_name() -> String {
                                     #field_name_string.to_string()

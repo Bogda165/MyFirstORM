@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use my_macros::{AutoQueryable, From, Queryable};
 use crate::{Column, RawColumn};
 use crate::column::Table;
-use crate::convertible::ConvertibleTo;
+use crate::convertible::{ConvertibleTo, TheType};
 use crate::create_a_name::{AutoQueryable, Queryable};
 use crate::literals::{Bool, Literal, Number};
 use crate::operators::Operator;
@@ -60,6 +60,14 @@ pub enum Expression {
     OperatorExpr(Box<Operator>),
     /// case expression must contain another Expr
     CaseExpr(Box<CaseExpr>),
+    /// Just empty expression
+    Empty,
+}
+
+impl Default for Expression {
+    fn default() -> Self {
+        Expression::Empty
+    }
 }
 
 impl From<Literal> for Expression {
@@ -94,24 +102,23 @@ impl Queryable for CaseExpr {
     }
 }
 
-struct SafeCase<ThenT, AllowedTables> {
+struct SafeCase<ThenT: TheType, AllowedTables> {
     tables: PhantomData<AllowedTables>,
     _marker: PhantomData<ThenT>,
     case_expr: CaseExpr,
 }
 
-impl<ThenT: Default, AllowedTables: Table> SafeCase<ThenT, AllowedTables> {
-    pub fn when_do<T, U>(mut self, when: SafeExpr<T, AllowedTables>, then: SafeExpr<U, AllowedTables>) -> Self
+impl<ThenT: Default + TheType, AllowedTables: Table> SafeCase<ThenT, AllowedTables> {
+    pub fn when_do<T: TheType, U: TheType>(mut self, when: SafeExpr<T, AllowedTables>, then: SafeExpr<U, AllowedTables>) -> Self
     where
-        T: ConvertibleTo<Bool>,
-        U: ConvertibleTo<ThenT>,
+        T::Type: ConvertibleTo<Bool>,
+        U::Type: ConvertibleTo<ThenT::Type>,
     {
         self.case_expr.case.push((when.expr, then.expr));
         self
     }
 
     pub fn end(self) -> SafeExpr<ThenT, AllowedTables>
-    where ThenT: Default
     {
         SafeExpr {
             tables: PhantomData::<AllowedTables>,
@@ -122,7 +129,7 @@ impl<ThenT: Default, AllowedTables: Table> SafeCase<ThenT, AllowedTables> {
 }
 
 
-impl<T, AllowedTables> SafeExpr<T, AllowedTables> {
+impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
     pub fn case_else(else_expr: SafeExpr<T, AllowedTables>) -> SafeCase<T, AllowedTables>
     {
         SafeCase::<T, AllowedTables> {
@@ -151,24 +158,24 @@ mod tests {
     use crate::expressions::RawTypes;
     use crate::safe_expressions::SafeExpr;
 
-    // #[test]
-    // fn case_expr() {
-    //     let some_val: SafeExpr<_, ()> =
-    //         SafeExpr::case_else(
-    //             SafeExpr::<_, ()>::basic("hello".to_string())
-    //         )
-    //         .when_do(
-    //             SafeExpr::basic(10)
-    //                 .more(SafeExpr::basic(14)),
-    //             SafeExpr::basic("its more man".to_string()))
-    //         .when_do(
-    //             SafeExpr::basic(10)
-    //                 .to_string()
-    //                 .like("%10", None),
-    //             SafeExpr::basic("Its correct string".to_string())
-    //         )
-    //         .end();
-    //
-    //     println!("{}", some_val.expr.to_query());
-    // }
+    #[test]
+    fn case_expr() {
+        let some_val: SafeExpr<_, ()> =
+            SafeExpr::case_else(
+                SafeExpr::<_, ()>::basic("hello".to_string())
+            )
+            .when_do(
+                SafeExpr::basic(10)
+                    .more(SafeExpr::basic(14)),
+                SafeExpr::basic("its more man".to_string()))
+            .when_do(
+                SafeExpr::basic(10)
+                    .to_string()
+                    .like("%10", None),
+                SafeExpr::basic("Its correct string".to_string())
+            )
+            .end();
+
+        println!("{}", some_val.expr.to_query());
+    }
 }

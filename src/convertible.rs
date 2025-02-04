@@ -2,14 +2,21 @@ use crate::literals::*;
 use crate::operators::NULLsExpression;
 use crate::RawColumn;
 
+pub trait TheType {
+    type Type;
+}
+
+
 /// if triat is implemented for T with <U> with Result = V, means that conversation between T and U is possible, and the result of it will be V
 pub trait Conversation<Type>{
     type Result: Default;
 }
 
+/// for each new type implement Convertible to Null, and Converstaion with result Null
 /// the implementation of ConvertileTo for T, with <U> means that T can be converted to U
 pub trait ConvertibleTo<To> {}
 
+#[macro_export]
 macro_rules! convertible {
     ($from:ty, $to:ty) => {
         impl ConvertibleTo<$to> for $from {}
@@ -18,10 +25,13 @@ macro_rules! convertible {
     };
 }
 
+
+
+#[macro_export]
 macro_rules! conversation {
     ($from:ty, $to:ty) => {
         impl Conversation<$to> for $from {type Result = $to; }
-        impl Conversation<$from> for $to {type Result = $to }
+        impl Conversation<$from> for $to {type Result = $to; }
         impl ConvertibleTo<$to> for $from {}
         impl ConvertibleTo<$from> for $to {}
     };
@@ -34,17 +44,21 @@ macro_rules! conversation {
     };
 
     ($from:ty, $to:ty, $result1:ty, $result2:ty) => {
-        impl Conversation<$to> for $from {type Result = $result1 }
-        impl Conversation<$from> for $to {type Result = $result2 }
+        impl Conversation<$to> for $from {type Result = $result1; }
+        impl Conversation<$from> for $to {type Result = $result2; }
         impl ConvertibleTo<$to> for $from {}
         impl ConvertibleTo<$from> for $to {}
     };
 }
 
+#[macro_export]
 macro_rules! self_converted {
     ($_type:ty) => {
         impl Conversation<$_type> for $_type {type Result = $_type;}
         impl ConvertibleTo<$_type> for $_type {}
+        impl TheType for $_type {
+            type Type = $_type;
+        }
     };
 }
 
@@ -59,7 +73,6 @@ self_converted!(f32);
 self_converted!(Literal);
 
 conversation!(i32, f32, Number);
-impl ConvertibleTo<f32> for i32 {}
 convertible!(Bool, i32);
 convertible!(Date, String);
 convertible!(Time, String);
@@ -72,4 +85,16 @@ convertible!(Date, Literal);
 convertible!(RawColumn, Literal);
 convertible!(i32, Literal);
 convertible!(f32, Literal);
+
+convertible!(Number, Null);
+convertible!(String, Null);
+convertible!(Time, Null);
+convertible!(Date, Null);
+convertible!(RawColumn, Null);
+convertible!(i32, Null);
+convertible!(f32, Null);
+
+
+conversation!(Bool, Number, Bool, Bool);
+
 
