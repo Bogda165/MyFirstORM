@@ -29,6 +29,8 @@ where
 struct RawColumn;
 
 mod column_tests {
+    use crate::column::Table;
+use my_macros::table;
     use super::{Allowed, Column};
     use crate::literals::*;
     use crate::convertible::*;
@@ -38,36 +40,37 @@ mod column_tests {
     use crate::safe_expressions::SafeExpr;
 
     // let it be i32 type column
-    struct UsersColumn;
+   //  struct UsersColumn;
+   //
+   //  impl Allowed<()> for () {}
+   //
+   //  impl Default for UsersColumn {
+   //      fn default() -> Self {
+   //          UsersColumn {}
+   //      }
+   //  }
+   //
+   //  impl TheType for UsersColumn {
+   //      type Type = i32;
+   //  }
+   //
+   //  impl Column for UsersColumn {
+   //      type Table = ();
+   //
+   //      fn get_name() -> String {
+   //          unreachable!();
+   //      }
+   //  }
+   //
+   // impl ConvertibleTo<Null> for UsersColumn {}
 
-    impl Allowed<()> for () {}
-
-    impl Default for UsersColumn {
-        fn default() -> Self {
-            UsersColumn {}
-        }
+    #[table]
+    struct some_table {
+        #[column]
+        #[null]
+        UsersColumn: i32,
     }
 
-    impl TheType for UsersColumn {
-        type Type = i32;
-    }
-
-    impl Column for UsersColumn {
-        type Table = ();
-
-        fn get_name() -> String {
-            unreachable!();
-        }
-    }
-
-   impl ConvertibleTo<Null> for UsersColumn {}
-
-
-    impl Into<RawTypes> for UsersColumn {
-        fn into(self) -> RawTypes {
-            RawTypes::Column(RawColumn{ table_name: "".to_string(), name: "users_column".to_string() })
-        }
-    }
 
 
     fn exclude_braces(mut query: String) -> String {
@@ -76,7 +79,7 @@ mod column_tests {
 
     #[test]
     fn test_column() {
-        let safe_expr: SafeExpr<_, ()> = SafeExpr::<UsersColumn, _>::column().add(SafeExpr::basic(10));
+        let safe_expr: SafeExpr<_, some_table> = SafeExpr::<UsersColumn, _>::column().add(SafeExpr::literal(10));
 
         println!("{}", safe_expr.expr.clone().to_query());
 
@@ -85,7 +88,7 @@ mod column_tests {
 
     #[test]
     fn null_expressions() {
-        let expr: SafeExpr<_, ()> = SafeExpr::<UsersColumn, _>::column().is_null();
+        let expr: SafeExpr<_, some_table> = SafeExpr::<UsersColumn, _>::column().is_null();
 
         //let wrong_expr: SafeExpr<_, ()> = SafeExpr::basic(10).is_null();
 

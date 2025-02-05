@@ -24,11 +24,11 @@ impl<ExprType: TheType, AllowedTables> SafeExpr<ExprType, AllowedTables>
         SafeExpr{
             type_val: PhantomData::<String>,
             tables: PhantomData::<AllowedTables>,
-            expr: self.expr,
+            expr: self.cast::<String>().expr,
         }
     }
 
-    pub fn basic(val: ExprType) -> SafeExpr<ExprType, AllowedTables>
+    pub fn literal(val: ExprType) -> SafeExpr<ExprType, AllowedTables>
     where
         ExprType: Into<RawTypes>
     {
@@ -56,11 +56,11 @@ mod tests {
 
     #[test]
     fn get_basic_type() {
-        let basic: SafeExpr<_, ()> = SafeExpr::basic(Number::Int(10));
+        let literal: SafeExpr<_, ()> = SafeExpr::literal(Number::Int(10));
         let check = SafeExpr::<Literal, ()>::new(Expression::Raw(Literal::NumberLit(10.into()).into()).into());
 
-        println!("{}", basic.expr.to_query());
+        println!("{}", literal.expr.to_query());
 
-        assert_eq!(basic.expr.to_query(), check.expr.to_query())
+        assert_eq!(literal.expr.to_query(), check.expr.to_query())
     }
 }

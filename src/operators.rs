@@ -684,26 +684,26 @@ mod tests {
 
     #[test]
     fn safe_expressions() {
-        let lit: SafeExpr<_, ()> = SafeExpr::basic(Bool::True);
-        let and_operator = lit.and(SafeExpr::basic(Bool::False));
+        let lit: SafeExpr<_, ()> = SafeExpr::literal(Bool::True);
+        let and_operator = lit.and(SafeExpr::literal(Bool::False));
 
         assert_eq!("True AND False", exclude_braces(and_operator.expr.to_query()));
 
-        let less_operator: SafeExpr<_, ()> = SafeExpr::basic(10).less(SafeExpr::basic(10.15));
+        let less_operator: SafeExpr<_, ()> = SafeExpr::literal(10).less(SafeExpr::literal(10.15));
 
         assert_eq!("10 < 10.15", exclude_braces(less_operator.expr.to_query()));
 
-        //let wrong_less_operator = SafeExpr::basic(10.124).less(SafeExpr::basic(Bool::True));
+        //let wrong_less_operator = SafeExpr::literal(10.124).less(SafeExpr::literal(Bool::True));
 
-        let add_operator: SafeExpr<_, ()> = SafeExpr::basic(10).add(SafeExpr::basic(10));
+        let add_operator: SafeExpr<_, ()> = SafeExpr::literal(10).add(SafeExpr::literal(10));
 
-        let wrong_add_operator: SafeExpr<_, ()> = SafeExpr::basic(10).add(SafeExpr::basic(Bool::True));
+        let wrong_add_operator: SafeExpr<_, ()> = SafeExpr::literal(10).add(SafeExpr::literal(Bool::True));
 
-        //let mod_operat0r = SafeExpr::basic(10).module(SafeExpr::basic(10.25));
+        //let mod_operat0r = SafeExpr::literal(10).module(SafeExpr::literal(10.25));
 
         assert_eq!("10 + 10", exclude_braces(add_operator.expr.to_query()));
 
-        let like_expr: SafeExpr<_, ()> = SafeExpr::basic("hello_man".to_string()).like("%hello", None).not();
+        let like_expr: SafeExpr<_, ()> = SafeExpr::literal("hello_man".to_string()).like("%hello", None).not();
 
         println!("{}", like_expr.expr.to_query());
 

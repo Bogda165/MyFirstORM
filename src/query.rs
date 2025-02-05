@@ -1,4 +1,6 @@
+use std::io::LineWriter;
 use std::marker::PhantomData;
+use std::ops::Deref;
 use crate::column::Allowed;
 use crate::convertible::TheType;
 use crate::safe_expressions::SafeExpr;
@@ -6,6 +8,25 @@ use crate::safe_expressions::SafeExpr;
 struct QueryPart<AllowedTables, ExprType: TheType> {
     tables: PhantomData<AllowedTables>,
     expr: SafeExpr<ExprType, AllowedTables>,
+}
+
+impl<ExprType: TheType, AllowedTables> From<SafeExpr<ExprType, AllowedTables>> for QueryPart<AllowedTables, ExprType> {
+    fn from(value: SafeExpr<ExprType, AllowedTables>) -> Self {
+        QueryPart {
+            tables: PhantomData::<AllowedTables>,
+            expr: value,
+        }
+    }
+}
+
+
+impl<ExprType: TheType, AllowedTables> SafeExpr<ExprType, AllowedTables> {
+    pub fn add_table<Table>(self) -> QueryPart<(Table, AllowedTables), ExprType> {
+        QueryPart {
+            tables: PhantomData::<(Table, AllowedTables)>,
+            expr: SafeExpr::new(self.expr),
+        }
+    }
 }
 
 
@@ -25,6 +46,10 @@ impl<AllowedTables, ExprType: TheType> QueryPart<AllowedTables, ExprType> {
             tables: PhantomData::<AllowedTables>,
             expr: tf(self.expr)
         }
+    }
+
+    pub fn into_expr(self) -> SafeExpr<ExprType, AllowedTables> {
+        self.expr
     }
 }
 
@@ -53,38 +78,78 @@ mod tests {
     use crate::convertible::TheType;
     use crate::expressions::RawTypes;
     use crate::literals::Bool;
-    use crate::RawColumn;
+    use crate::{column, RawColumn};
 
-    #[table]
-    struct table1 {
-        #[column]
-        id: i32,
+    mod table1 {
+        use super::*;
+
+        #[table]
+        struct table1 {
+            #[column]
+            id: i32,
+            #[column]
+            name: String,
+        }
+
     }
 
-    from!(table1);
-    impl Default for id {
-        fn default() -> Self {
-            id {}
+    mod table2 {
+        use super::*;
+
+        #[table]
+        struct table2 {
+            #[column]
+            id: f32,
+            #[column]
+            address: String,
         }
     }
 
-    impl Into<RawTypes> for id {
-        fn into(self) -> RawTypes {
-            RawTypes::Column(RawColumn{ table_name: "".to_string(), name: "id".to_string() })
+    mod table3 {
+        use super::*;
+
+        #[table]
+        struct table3 {
+            #[column]
+            id: f32,
+            #[column]
+            address: String,
         }
     }
 
-    impl TheType for id {
-        type Type = i32;
+    from!(table1::table1, table2::table2, table3::table3);
+
+    fn basic<Val>(val: Val) -> SafeExpr<Val, ()>
+    where
+        Val: Into<RawTypes> + TheType
+    {
+        SafeExpr::<Val, ()>::literal(val)
     }
+
+    fn column<Column: TheType + column::Column, T: column::Allowed<<Column as column::Column>::Table>>() -> SafeExpr<Column, T> {
+        SafeExpr::<Column, T>::column()
+    }
+
 
     #[test]
     fn test1() {
 
-        let part = QueryPart {expr: SafeExpr::basic(10), tables: PhantomData::<()> }.add_table::<table1>()
-            .key_word(|expr| {
-                expr.add(SafeExpr::<id, _>::column())
-            });
+        let part: QueryPart<_, _> =
+            basic(10)
+                .add_table::<table1::table1>().into_expr()
+                .add(column::<table1::id, _>())
+                .to_string()
+                .concatenate(column::<table1::name, _>()).add_table::<table3::table3>().into_expr()
+                .equal(
+                    column::<table3::id, _>().to_string()
+                        .concatenate(column::<table3::address, _>())
+                )
+            .into();
+
+        // let part: QueryPart<_, _> = SafeExpr::<_, ()>::literal(10).add_table::<table1>().into_expr()
+        //     .add(SafeExpr::<id, _>::column())
+        //     .to_string()
+        //     .concatenate(SafeExpr::<name, _>::column()).into();
 
         println!("{}", part.expr.expr.to_query());
     }

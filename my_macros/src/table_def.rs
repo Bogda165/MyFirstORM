@@ -69,34 +69,70 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
                 let field_type = field.clone().ty;
                 let field_name_string = field_name.clone().to_string();
 
-                match field.attrs.iter().zip(0..attrs_amount)
-                    .find(|(attr, index)| {
-                        if attr.path.is_ident("column") {
-                            return true
-                        }
-                        false
-                    })
-                {
-                    Some((_, index)) => {
-                        field.attrs.remove(index);
+                let mut remove_attrs: Vec<usize> = vec![];
 
-                        quote! {
-                            pub struct #field_name;
+                let  opened_attrs= field.attrs.iter().zip(0..attrs_amount).map(|(attr, index)| {
+                    match attr.path.get_ident() {
+                        None => { quote! {}}
+                        Some(attr) => {
+                            match &*attr.to_string() {
+                                "column" =>  {
+                                    remove_attrs.push(index);
+
+                                    quote! {
+                                        pub struct #field_name;
+
+                                        impl Default for #field_name {
+                                            fn default() -> Self {
+                                                #field_name {}
+                                            }
+                                        }
+
+                                        impl TheType for #field_name {
+                                            type Type = #field_type;
+                                        }
 
 
-                            impl Column for #field_name {
-                                type Table = #table_name;
+                                        impl Into<RawTypes> for #field_name {
+                                            fn into(self) -> RawTypes {
+                                                RawTypes::Column(RawColumn{ table_name: "".to_string(), name: #field_name_string.to_string() })
+                                            }
+                                        }
 
-                                fn get_name() -> String {
-                                    #field_name_string.to_string()
+                                        impl Column for #field_name {
+                                            type Table = #table_name;
+
+                                            fn get_name() -> String {
+                                                #field_name_string.to_string()
+                                            }
+                                        }
+                                    }
+                                }
+                                "null" => {
+                                    remove_attrs.push(index);
+
+                                    quote! {
+                                        impl ConvertibleTo<Null> for #field_name {}
+                                    }
+                                }
+                                _ => {
+                                    quote!{}
                                 }
                             }
                         }
                     }
-                    None => {
-                        quote!{}
-                    }
-                }
+                });
+
+                let _return = quote! {
+                    #(#opened_attrs)*
+                };
+                eprintln!("Removing attrs: {:?}", remove_attrs);
+                let length = remove_attrs.len();
+                remove_attrs.into_iter().zip(0..length).for_each(|(index, remove_i)| {
+                    field.attrs.remove(remove_i - index);
+                });
+
+                _return
             })
         }
         _ => {

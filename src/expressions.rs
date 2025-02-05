@@ -162,17 +162,17 @@ mod tests {
     fn case_expr() {
         let some_val: SafeExpr<_, ()> =
             SafeExpr::case_else(
-                SafeExpr::<_, ()>::basic("hello".to_string())
+                SafeExpr::<_, ()>::literal("hello".to_string())
             )
             .when_do(
-                SafeExpr::basic(10)
-                    .more(SafeExpr::basic(14)),
-                SafeExpr::basic("its more man".to_string()))
+                SafeExpr::literal(10)
+                    .more(SafeExpr::literal(14)),
+                SafeExpr::literal("its more man".to_string()))
             .when_do(
-                SafeExpr::basic(10)
+                SafeExpr::literal(10)
                     .to_string()
                     .like("%10", None),
-                SafeExpr::basic("Its correct string".to_string())
+                SafeExpr::literal("Its correct string".to_string())
             )
             .end();
 
