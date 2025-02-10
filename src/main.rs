@@ -22,7 +22,7 @@ impl AutoQueryable for RawColumn{}
 
 impl Queryable for RawColumn {
     fn convert_to_query(&self) -> Option<String> {
-        Some(format!("{}{}", if self.table_name.len() > 0 {format!(".{}", self.table_name)} else {"".to_string()}, self.name))
+        Some(format!("{}.{}", self.table_name, if self.table_name.len() > 0 {self.name.clone()} else {"".to_string()}))
     }
 }
 

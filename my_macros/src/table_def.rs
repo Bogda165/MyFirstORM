@@ -61,6 +61,8 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
 
     let table_name = table.clone().ident;
 
+    let table_name_string = table_name.to_string();
+
     let _impl = match table.data {
         Data::Struct(ref mut table) => {
             table.fields.iter_mut().map(|field| {
@@ -95,7 +97,7 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
 
                                         impl Into<RawTypes> for #field_name {
                                             fn into(self) -> RawTypes {
-                                                RawTypes::Column(RawColumn{ table_name: "".to_string(), name: #field_name_string.to_string() })
+                                                RawTypes::Column(RawColumn{ table_name: #table_name_string.to_string(), name: #field_name_string.to_string() })
                                             }
                                         }
 
@@ -141,9 +143,14 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
     };
 
 
+
     quote! {
 
-        impl Table for #table_name {}
+        impl Table for #table_name {
+            fn get_name() -> String {
+                #table_name_string.to_string()
+            }
+        }
         impl Allowed<#table_name> for #table_name {}
 
 

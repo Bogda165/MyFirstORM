@@ -3,9 +3,15 @@ use crate::create_a_name::Queryable;
 use crate::expressions::RawTypes;
 
 /// trait that should implement every table, impl with #[table] macro
-pub trait Table {}
+pub trait Table {
+    fn get_name() -> String;
+}
 
-impl Table for () {}
+impl Table for () {
+    fn get_name() -> String {
+        String::default()
+    }
+}
 
 /// Trait of a column in the table, impl using #[table] macro, and attribute #[column]
 pub trait Column: Default + TheType + Into<RawTypes>{
@@ -25,8 +31,6 @@ where
 {
 
 }
-
-struct RawColumn;
 
 mod column_tests {
     use crate::column::Table;

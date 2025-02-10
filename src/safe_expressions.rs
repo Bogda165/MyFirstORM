@@ -1,11 +1,19 @@
 use std::marker::PhantomData;
 use crate::column::{Allowed, Column, Table};
 use crate::convertible::TheType;
+use crate::create_a_name::{AutoQueryable, Queryable};
 use crate::expressions::{Expression, RawTypes};
 pub struct SafeExpr<ExprType: TheType, AllowedTables> {
     pub tables: PhantomData<AllowedTables>,
     pub(crate) type_val: PhantomData<ExprType>,
     pub(crate) expr: Expression,
+}
+impl<T: TheType, U> AutoQueryable for SafeExpr<T, U> {}
+
+impl<T: TheType, U> Queryable for SafeExpr<T, U> {
+    fn convert_to_query(&self) -> Option<String> {
+        Some(self.expr.to_query())
+    }
 }
 
 impl<ExprType: TheType, AllowedTables> SafeExpr<ExprType, AllowedTables>
@@ -15,6 +23,14 @@ impl<ExprType: TheType, AllowedTables> SafeExpr<ExprType, AllowedTables>
             tables: PhantomData::<AllowedTables>,
             type_val: PhantomData::<ExprType>,
             expr,
+        }
+    }
+
+    pub fn change_tables<NewAllowedTables>(self) -> SafeExpr<ExprType, NewAllowedTables> {
+        SafeExpr {
+            tables: PhantomData::<NewAllowedTables>,
+            type_val: self.type_val,
+            expr: self.expr,
         }
     }
 
