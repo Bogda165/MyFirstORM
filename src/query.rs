@@ -1,7 +1,7 @@
 use std::io::LineWriter;
 use std::marker::PhantomData;
 use std::ops::Deref;
-use crate::column::Allowed;
+use crate::column::{Allowed, Column};
 use crate::convertible::TheType;
 use crate::query::from::FromTables;
 use crate::query::join::Join;
@@ -76,7 +76,7 @@ mod the_query {
     use crate::literals::Bool;
     use crate::query::from::FromTables;
     use crate::query::join::Join;
-    use crate::safe_expressions::SafeExpr;
+    use crate::safe_expressions::{SafeExpr, SafeExprTuple};
     use crate::query::select::Select;
 
     pub struct Where<AllowedTables> {
@@ -176,6 +176,11 @@ mod the_query {
             self.select = self.select.select(expr.expr, None);
             self
         }
+
+        pub fn select_test<Safe: SafeExprTuple<AllowedTables> + Queryable>(mut self, columns: Safe) -> Self {
+            self.select = self.select.select_test(columns);
+            self
+        }
     }
 
     impl<AllowedTables> Default for Query<AllowedTables> {
@@ -271,10 +276,16 @@ mod select {
     impl Select {
         pub fn select(self, expr: Expression, name: Option<&str>) -> Self {
             Select { query:
-                    self.query + & * expr.to_query() + &*match name {
-                        None => {"".to_string()}
-                        Some(name) => {format!(" AS {}", name)}
-                    } + "\n"
+            self.query + & * expr.to_query() + &*match name {
+                None => {"".to_string()}
+                Some(name) => {format!(" AS {}", name)}
+            } + "\n"
+            }
+        }
+
+        pub fn select_test<Columns: Queryable>(self, columns: Columns) -> Self {
+            Select{
+                query: columns.to_query()
             }
         }
     }
@@ -309,8 +320,6 @@ mod join {
         }
     }
 }
-
-
 
 mod tests {
     use std::marker::PhantomData;
@@ -465,7 +474,7 @@ mod tests {
                         SafeExpr::<table3::id, _>::column()
                     )
             )
-            .select(SafeExpr::<table3::id, _>::column())
+            .select_test((SafeExpr::<table1::id, _>::column(), (SafeExpr::<table1::id, _>::column(), SafeExpr::<table2::id, _>::column())))
             .to_query();
 
         println!("{}", query);

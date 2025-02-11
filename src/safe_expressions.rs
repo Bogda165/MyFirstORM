@@ -3,6 +3,14 @@ use crate::column::{Allowed, Column, Table};
 use crate::convertible::TheType;
 use crate::create_a_name::{AutoQueryable, Queryable};
 use crate::expressions::{Expression, RawTypes};
+pub trait SafeExprTuple<Tables> {
+
+}
+
+impl<T: TheType, U> SafeExprTuple<U> for SafeExpr<T, U> {}
+
+impl<T: TheType, U, Tuple: SafeExprTuple<U>> SafeExprTuple<U> for (SafeExpr<T, U>, Tuple) {}
+
 pub struct SafeExpr<ExprType: TheType, AllowedTables> {
     pub tables: PhantomData<AllowedTables>,
     pub(crate) type_val: PhantomData<ExprType>,
