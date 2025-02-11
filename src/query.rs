@@ -245,6 +245,7 @@ pub mod from {
     }
 
     #[macro_export]
+    ///creates a query from multiply tables
     macro_rules! query_from {
     ($($arg:ty),+) => {
         {

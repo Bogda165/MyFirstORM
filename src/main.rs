@@ -23,7 +23,9 @@ mod tables {
     use crate::column::Column;
     use crate::convertible::TheType;
     pub mod users {
-        use super::*;
+        use crate::column::RawColumn;
+use crate::expressions::raw_types::RawTypes;
+use super::*;
 
         #[table]
         struct users {
@@ -35,7 +37,9 @@ mod tables {
     }
 
     pub mod address {
-        use super::*;
+        use crate::column::RawColumn;
+use crate::expressions::raw_types::RawTypes;
+use super::*;
 
         #[table]
         struct address {
@@ -47,7 +51,9 @@ mod tables {
     }
 
     pub mod phone {
-        use super::*;
+        use crate::column::RawColumn;
+use crate::expressions::raw_types::RawTypes;
+use super::*;
 
         #[table]
         struct phone {
@@ -84,6 +90,8 @@ fn main() {
                     (column(phone::number),
                      column(address::street)))
         );
+
+
 
     println!("{}", query.to_query());
 }
