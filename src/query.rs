@@ -7,72 +7,65 @@ use crate::query::from::FromTables;
 use crate::query::join::Join;
 use crate::safe_expressions::SafeExpr;
 
-struct QueryPart<AllowedTables, ExprType: TheType> {
-    tables: PhantomData<AllowedTables>,
-    expr: SafeExpr<ExprType, AllowedTables>,
-}
+pub mod query_part {
+    use std::marker::PhantomData;
+    use crate::convertible::TheType;
+    use crate::safe_expressions::SafeExpr;
 
-impl<ExprType: TheType, AllowedTables> From<SafeExpr<ExprType, AllowedTables>> for QueryPart<AllowedTables, ExprType> {
-    fn from(value: SafeExpr<ExprType, AllowedTables>) -> Self {
-        QueryPart {
-            tables: PhantomData::<AllowedTables>,
-            expr: value,
-        }
+    pub struct QueryPart<AllowedTables, ExprType: TheType> {
+        tables: PhantomData<AllowedTables>,
+        pub(crate) expr: SafeExpr<ExprType, AllowedTables>,
     }
-}
 
-
-impl<ExprType: TheType, AllowedTables> SafeExpr<ExprType, AllowedTables> {
-    pub fn add_table<Table>(self) -> QueryPart<(Table, AllowedTables), ExprType> {
-        QueryPart {
-            tables: PhantomData::<(Table, AllowedTables)>,
-            expr: SafeExpr::new(self.expr),
-        }
-    }
-}
-
-
-
-impl<AllowedTables, ExprType: TheType> QueryPart<AllowedTables, ExprType> {
-    pub fn add_table<Table>(self) -> QueryPart<(Table, AllowedTables), ExprType> {
-        QueryPart {
-            tables: PhantomData::<(Table, AllowedTables)>,
-            expr: SafeExpr::new(self.expr.expr),
-        }
-    }
-    pub fn key_word<TransformFunc, NewType: TheType>(self, tf: TransformFunc) -> QueryPart<AllowedTables, NewType>
-    where
-        TransformFunc: FnOnce(SafeExpr<ExprType, AllowedTables>) -> SafeExpr<NewType, AllowedTables>
-    {
-        QueryPart {
-            tables: PhantomData::<AllowedTables>,
-            expr: tf(self.expr)
+    impl<ExprType: TheType, AllowedTables> From<SafeExpr<ExprType, AllowedTables>> for QueryPart<AllowedTables, ExprType> {
+        fn from(value: SafeExpr<ExprType, AllowedTables>) -> Self {
+            QueryPart {
+                tables: PhantomData::<AllowedTables>,
+                expr: value,
+            }
         }
     }
 
-    pub fn into_expr(self) -> SafeExpr<ExprType, AllowedTables> {
-        self.expr
+
+    impl<ExprType: TheType, AllowedTables> SafeExpr<ExprType, AllowedTables> {
+        pub fn add_table<Table>(self) -> QueryPart<(Table, AllowedTables), ExprType> {
+            QueryPart {
+                tables: PhantomData::<(Table, AllowedTables)>,
+                expr: SafeExpr::new(self.expr),
+            }
+        }
     }
+
+
+    impl<AllowedTables, ExprType: TheType> QueryPart<AllowedTables, ExprType> {
+        pub fn add_table<Table>(self) -> QueryPart<(Table, AllowedTables), ExprType> {
+            QueryPart {
+                tables: PhantomData::<(Table, AllowedTables)>,
+                expr: SafeExpr::new(self.expr.expr),
+            }
+        }
+        pub fn key_word<TransformFunc, NewType: TheType>(self, tf: TransformFunc) -> QueryPart<AllowedTables, NewType>
+        where
+            TransformFunc: FnOnce(SafeExpr<ExprType, AllowedTables>) -> SafeExpr<NewType, AllowedTables>
+        {
+            QueryPart {
+                tables: PhantomData::<AllowedTables>,
+                expr: tf(self.expr)
+            }
+        }
+
+        pub fn into_expr(self) -> SafeExpr<ExprType, AllowedTables> {
+            self.expr
+        }
+    }
+
 }
 
-// impl<AllowedTables, ExprType: TheType> Default for QueryPart<AllowedTables, ExprType> {
-//     fn default() -> Self {
-//         QueryPart {
-//             tables: PhantomData::<()>,
-//             expr: SafeExpr {
-//                 tables: Default::default(),
-//                 type_val: Default::default(),
-//                 expr: Default::default(),
-//             },
-//         }
-//     }
-// }
-
-mod the_query {
+pub mod the_query {
     use std::marker::PhantomData;
     use crate::column::Table;
     use crate::convertible::TheType;
-    use crate::create_a_name::{AutoQueryable, Queryable};
+    use crate::queryable::{AutoQueryable, Queryable};
     use crate::literals::Bool;
     use crate::query::from::FromTables;
     use crate::query::join::Join;
@@ -195,11 +188,11 @@ mod the_query {
     }
 }
 
-mod from {
+pub mod from {
     use std::marker::PhantomData;
     use crate::query::the_query::Query;
     use crate::column::Table;
-    use crate::create_a_name::{AutoQueryable, Queryable};
+    use crate::queryable::{AutoQueryable, Queryable};
 
     pub struct FromTables<AllowedTables> {
         tables: PhantomData<AllowedTables>,
@@ -264,8 +257,8 @@ mod from {
     }
 }}
 
-mod select {
-    use crate::create_a_name::{AutoQueryable, Queryable};
+pub mod select {
+    use crate::queryable::{AutoQueryable, Queryable};
     use crate::expressions::Expression;
 
     #[derive(Default)]
@@ -294,15 +287,15 @@ mod select {
 
     impl Queryable for Select {
         fn convert_to_query(&self) -> Option<String> {
-            Some(format!{"SELECT {}", self.query})
+            Some(format!{"SELECT {}\n", self.query})
         }
     }
 }
 
-mod join {
+pub mod join {
     use std::marker::PhantomData;
     use crate::convertible::{ConvertibleTo, TheType};
-    use crate::create_a_name::{AutoQueryable, Queryable};
+    use crate::queryable::{AutoQueryable, Queryable};
     use crate::literals::Bool;
     use crate::query::from::FromTables;
     use crate::safe_expressions::SafeExpr;
@@ -322,19 +315,17 @@ mod join {
 }
 
 mod tests {
-    use std::marker::PhantomData;
     use my_macros::{from, table};
-    use crate::create_a_name::Queryable;
-    use crate::query::QueryPart;
+    use crate::queryable::Queryable;
     use crate::safe_expressions::SafeExpr;
     use crate::column::Allowed;
     use crate::column::Table;
     use crate::column::Column;
     use crate::convertible::TheType;
-    use crate::expressions::RawTypes;
-    use crate::literals::Bool;
-    use crate::{column, from_tables, RawColumn, nest_tuple, query_from};
+    use crate::expressions::raw_types::RawTypes;
+    use crate::{column, query_from};
     use crate::query::the_query::{Query, Where};
+    use crate::column::RawColumn;
 
     mod tables {
         use super::*;
@@ -413,6 +404,7 @@ mod tests {
     }
 
     mod test_beauty {
+        use crate::query::query_part::QueryPart;
         use super::*;
         fn basic<Val>(val: Val) -> SafeExpr<Val, ()>
         where

@@ -139,7 +139,7 @@ pub fn my_custom_derive(input: TokenStream) -> TokenStream {
 
     let _return = quote! {
 
-        impl #generics crate::create_a_name::AutoQueryable for #enum_name #generics
+        impl #generics crate::queryable::AutoQueryable for #enum_name #generics
         #where_clause
         {
             fn to_query_auto(&self) -> Option<String> {

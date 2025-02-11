@@ -1,6 +1,6 @@
 use crate::literals::*;
 use crate::operators::NULLsExpression;
-use crate::RawColumn;
+use crate::column::RawColumn;
 
 pub trait TheType {
     type Type;

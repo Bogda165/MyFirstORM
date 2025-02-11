@@ -1,5 +1,5 @@
 use my_macros::{AutoQueryable, From, Queryable};
-use crate::create_a_name::{AutoQueryable, Queryable};
+use crate::queryable::{AutoQueryable, Queryable};
 use crate::expressions::Expression;
 use crate::literals::Number::*;
 use crate::literals::Literal::*;
@@ -40,21 +40,6 @@ impl AutoQueryable for Date {}
 impl Queryable for Date {
     fn convert_to_query(&self) -> Option<String> {
         Some("Date".to_string())
-    }
-}
-
-
-impl AutoQueryable for f32 {}
-impl AutoQueryable for i32 {}
-impl Queryable for f32 {
-    fn convert_to_query(&self) -> Option<String> {
-        Some(self.to_string())
-    }
-}
-
-impl Queryable for i32 {
-    fn convert_to_query(&self) -> Option<String> {
-        Some(self.to_string())
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::convertible::TheType;
-use crate::create_a_name::Queryable;
-use crate::expressions::RawTypes;
+use crate::queryable::{AutoQueryable, Queryable};
+use crate::expressions::raw_types::RawTypes;
 
 /// trait that should implement every table, impl with #[table] macro
 pub trait Table {
@@ -31,42 +31,31 @@ where
 {
 
 }
+#[derive(Debug, Clone, Default)]
+pub struct RawColumn {
+    pub table_name: String,
+    pub name: String,
+}
+
+impl AutoQueryable for RawColumn{}
+
+impl Queryable for RawColumn {
+    fn convert_to_query(&self) -> Option<String> {
+        Some(format!("{}.{}", self.table_name, if self.table_name.len() > 0 {self.name.clone()} else {"".to_string()}))
+    }
+}
+
 
 mod column_tests {
     use crate::column::Table;
-use my_macros::table;
+    use my_macros::table;
     use super::{Allowed, Column};
     use crate::literals::*;
     use crate::convertible::*;
-    use crate::{conversation, convertible, self_converted, RawColumn};
-    use crate::create_a_name::Queryable;
-    use crate::expressions::RawTypes;
+    use crate::queryable::Queryable;
+    use crate::expressions::raw_types::RawTypes;
     use crate::safe_expressions::SafeExpr;
-
-    // let it be i32 type column
-   //  struct UsersColumn;
-   //
-   //  impl Allowed<()> for () {}
-   //
-   //  impl Default for UsersColumn {
-   //      fn default() -> Self {
-   //          UsersColumn {}
-   //      }
-   //  }
-   //
-   //  impl TheType for UsersColumn {
-   //      type Type = i32;
-   //  }
-   //
-   //  impl Column for UsersColumn {
-   //      type Table = ();
-   //
-   //      fn get_name() -> String {
-   //          unreachable!();
-   //      }
-   //  }
-   //
-   // impl ConvertibleTo<Null> for UsersColumn {}
+    use crate::column::RawColumn;
 
     #[table]
     struct some_table {

@@ -49,6 +49,28 @@ where
 }
 
 
+impl AutoQueryable for String {}
+impl Queryable for String {
+    fn convert_to_query(&self) -> Option<String> {
+        Some(format!("\"{}\"", self.clone()))
+    }
+}
+
+
+impl AutoQueryable for f32 {}
+impl Queryable for f32 {
+    fn convert_to_query(&self) -> Option<String> {
+        Some(self.to_string())
+    }
+}
+
+impl AutoQueryable for i32 {}
+impl Queryable for i32 {
+    fn convert_to_query(&self) -> Option<String> {
+        Some(self.to_string())
+    }
+}
+
 mod tests {
     use super::*;
 

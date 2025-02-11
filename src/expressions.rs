@@ -1,53 +1,62 @@
 use crate::expressions::Expression::*;
-use std::io::read_to_string;
-use std::iter::Filter;
-use std::marker::PhantomData;
 use my_macros::{AutoQueryable, From, Queryable};
-use crate::{Column, RawColumn};
+use crate::column::RawColumn;
+use crate::{Column};
 use crate::column::Table;
 use crate::convertible::{ConvertibleTo, TheType};
-use crate::create_a_name::{AutoQueryable, Queryable};
-use crate::literals::{Bool, Literal, Number};
+use crate::expressions::raw_types::RawTypes;
+use crate::queryable::{AutoQueryable, Queryable};
+use crate::literals::{Literal};
 use crate::operators::Operator;
-use crate::safe_expressions::SafeExpr;
 
-#[derive(Debug, AutoQueryable, Clone, Queryable, From)]
-#[path = "crate::expressions"]
-pub enum RawTypes {
-    Lit(Literal),
-    Column(RawColumn),
-}
 
-impl From<Number> for RawTypes {
-    fn from(value: Number) -> Self {
-        RawTypes::Lit(Literal::NumberLit(value))
+pub mod raw_types {
+    use my_macros::{AutoQueryable, From, Queryable};
+    use crate::literals::Literal;
+    use crate::queryable::{AutoQueryable, Queryable};
+    use crate::column::RawColumn;
+
+    #[derive(Debug, AutoQueryable, Clone, Queryable, From)]
+    #[path = "crate::expressions"]
+    pub enum RawTypes {
+        Lit(Literal),
+        Column(RawColumn),
+    }
+
+    mod impls_for_raw_types {
+        use crate::literals::{Bool, Number};
+        use super::*;
+        impl From<Number> for RawTypes {
+            fn from(value: Number) -> Self {
+                RawTypes::Lit(Literal::NumberLit(value))
+            }
+        }
+
+        impl From<String> for RawTypes {
+            fn from(value: String) -> Self {
+                RawTypes::Lit(Literal::StringLit(value))
+            }
+        }
+
+        impl From<Bool> for RawTypes {
+            fn from(value: Bool) -> Self {
+                RawTypes::Lit(Literal::Bool(value))
+            }
+        }
+
+        impl From<i32> for RawTypes {
+            fn from(value: i32) -> Self {
+                RawTypes::Lit(Literal::NumberLit(Number::Int(value)))
+            }
+        }
+
+        impl From<f32> for RawTypes {
+            fn from(value: f32) -> Self {
+                RawTypes::Lit(Number::Real(value).into())
+            }
+        }
     }
 }
-
-impl From<String> for RawTypes {
-    fn from(value: String) -> Self {
-        RawTypes::Lit(Literal::StringLit(value))
-    }
-}
-
-impl From<Bool> for RawTypes {
-    fn from(value: Bool) -> Self {
-        RawTypes::Lit(Literal::Bool(value))
-    }
-}
-
-impl From<i32> for RawTypes {
-    fn from(value: i32) -> Self {
-        RawTypes::Lit(Literal::NumberLit(Number::Int(value)))
-    }
-}
-
-impl From<f32> for RawTypes {
-    fn from(value: f32) -> Self {
-        RawTypes::Lit(Number::Real(value).into())
-    }
-}
-
 
 /// each expression should be divided with (expr)
 ///
@@ -79,10 +88,10 @@ impl From<Literal> for Expression {
 
 ///if base is non case must contain a row or binary operator
 #[derive(Debug, Clone)]
-struct CaseExpr {
-    base_expr: Option<Expression>,
-    case: Vec<(Expression, Expression)>,
-    else_expr: Expression,
+pub struct CaseExpr {
+    pub base_expr: Option<Expression>,
+    pub case: Vec<(Expression, Expression)>,
+    pub else_expr: Expression,
 }
 
 impl AutoQueryable for CaseExpr{}
@@ -102,59 +111,8 @@ impl Queryable for CaseExpr {
     }
 }
 
-struct SafeCase<ThenT: TheType, AllowedTables> {
-    tables: PhantomData<AllowedTables>,
-    _marker: PhantomData<ThenT>,
-    case_expr: CaseExpr,
-}
-
-impl<ThenT: Default + TheType, AllowedTables: Table> SafeCase<ThenT, AllowedTables> {
-    pub fn when_do<T: TheType, U: TheType>(mut self, when: SafeExpr<T, AllowedTables>, then: SafeExpr<U, AllowedTables>) -> Self
-    where
-        T::Type: ConvertibleTo<Bool>,
-        U::Type: ConvertibleTo<ThenT::Type>,
-    {
-        self.case_expr.case.push((when.expr, then.expr));
-        self
-    }
-
-    pub fn end(self) -> SafeExpr<ThenT, AllowedTables>
-    {
-        SafeExpr {
-            tables: PhantomData::<AllowedTables>,
-            type_val: PhantomData::<ThenT>,
-            expr: Expression::CaseExpr(Box::new(self.case_expr)),
-        }
-    }
-}
-
-
-impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
-    pub fn case_else(else_expr: SafeExpr<T, AllowedTables>) -> SafeCase<T, AllowedTables>
-    {
-        SafeCase::<T, AllowedTables> {
-            tables: PhantomData::<AllowedTables>,
-            _marker: PhantomData,
-            case_expr: CaseExpr {
-                base_expr: None,
-                case: vec![],
-                else_expr: else_expr.expr,
-            }
-        }
-    }
-}
-
-impl AutoQueryable for String {}
-
-impl Queryable for String {
-    fn convert_to_query(&self) -> Option<String> {
-        Some(format!("\"{}\"", self.clone()))
-    }
-}
-
-
 mod tests {
-    use crate::create_a_name::Queryable;
+    use crate::queryable::Queryable;
     use crate::expressions::RawTypes;
     use crate::safe_expressions::SafeExpr;
 

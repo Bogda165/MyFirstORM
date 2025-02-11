@@ -1,8 +1,9 @@
 use std::marker::PhantomData;
 use crate::column::{Allowed, Column, Table};
 use crate::convertible::TheType;
-use crate::create_a_name::{AutoQueryable, Queryable};
-use crate::expressions::{Expression, RawTypes};
+use crate::queryable::{AutoQueryable, Queryable};
+use crate::expressions::{Expression};
+use crate::expressions::raw_types::RawTypes;
 pub trait SafeExprTuple<Tables> {
 
 }
@@ -72,8 +73,70 @@ impl<ExprType: TheType, AllowedTables> SafeExpr<ExprType, AllowedTables>
     }
 }
 
+pub fn column<Type: TheType + Column, AllowedTables: Allowed<<Type as Column>::Table>>(column: Type) -> SafeExpr<Type, AllowedTables> {
+    SafeExpr::<Type, AllowedTables>::column()
+}
+
+pub fn literal<ExprType: TheType, AllowedTables>(val: ExprType) -> SafeExpr<ExprType, AllowedTables>
+where
+    ExprType: Into<RawTypes>
+{
+    SafeExpr::literal(val)
+}
+
+
+
+pub mod safe_case {
+    use crate::convertible::ConvertibleTo;
+    use super::*;
+    use crate::expressions::CaseExpr;
+    use crate::literals::Bool;
+
+    pub struct SafeCase<ThenT: TheType, AllowedTables> {
+        tables: PhantomData<AllowedTables>,
+        _marker: PhantomData<ThenT>,
+        case_expr: CaseExpr,
+    }
+
+    impl<ThenT: Default + TheType, AllowedTables: Table> SafeCase<ThenT, AllowedTables> {
+        pub fn when_do<T: TheType, U: TheType>(mut self, when: SafeExpr<T, AllowedTables>, then: SafeExpr<U, AllowedTables>) -> Self
+        where
+            T::Type: ConvertibleTo<Bool>,
+            U::Type: ConvertibleTo<ThenT::Type>,
+        {
+            self.case_expr.case.push((when.expr, then.expr));
+            self
+        }
+
+        pub fn end(self) -> SafeExpr<ThenT, AllowedTables>
+        {
+            SafeExpr {
+                tables: PhantomData::<AllowedTables>,
+                type_val: PhantomData::<ThenT>,
+                expr: Expression::CaseExpr(Box::new(self.case_expr)),
+            }
+        }
+    }
+
+
+    impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
+        pub fn case_else(else_expr: SafeExpr<T, AllowedTables>) -> SafeCase<T, AllowedTables>
+        {
+            SafeCase::<T, AllowedTables> {
+                tables: PhantomData::<AllowedTables>,
+                _marker: PhantomData,
+                case_expr: CaseExpr {
+                    base_expr: None,
+                    case: vec![],
+                    else_expr: else_expr.expr,
+                }
+            }
+        }
+    }
+}
+
 mod tests {
-    use crate::create_a_name::Queryable;
+    use crate::queryable::Queryable;
     use crate::expressions::Expression;
     use crate::literals::{Literal, Number};
     use crate::safe_expressions::SafeExpr;

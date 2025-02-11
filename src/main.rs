@@ -1,39 +1,89 @@
+use crate::query::the_query::Query;
 use std::fmt::format;
+use my_macros::{table};
 use crate::column::Column;
-use crate::create_a_name::{AutoQueryable, Queryable};
+use crate::queryable::{AutoQueryable, Queryable};
 
 mod expressions;
 mod column;
 mod literals;
 mod operators;
-mod create_a_name;
-mod play_types;
+mod queryable;
 mod safe_expressions;
 mod convertible;
 mod query;
+mod raw_column;
 
-#[derive(Debug, Clone, Default)]
-struct RawColumn {
-    table_name: String,
-    name: String,
-}
+mod tables {
+    use super::*;
+    use my_macros::{from, table};
+    use crate::queryable::Queryable;
+    use crate::column::Allowed;
+    use crate::column::Table;
+    use crate::column::Column;
+    use crate::convertible::TheType;
+    pub mod users {
+        use super::*;
 
-impl AutoQueryable for RawColumn{}
-
-impl Queryable for RawColumn {
-    fn convert_to_query(&self) -> Option<String> {
-        Some(format!("{}.{}", self.table_name, if self.table_name.len() > 0 {self.name.clone()} else {"".to_string()}))
+        #[table]
+        struct users {
+            #[column]
+            id: i32,
+            #[column]
+            name: String,
+        }
     }
+
+    pub mod address {
+        use super::*;
+
+        #[table]
+        struct address {
+            #[column]
+            id: i32,
+            #[column]
+            street: String,
+        }
+    }
+
+    pub mod phone {
+        use super::*;
+
+        #[table]
+        struct phone {
+            #[column]
+            id: i32,
+            #[column]
+            number: i32,
+        }
+    }
+
+    from!(phone::phone, users::users, address::address);
 }
 
-// for check
-pub trait Query {
-    // fn select(self, columns: Vec<Column>) -> String {
-    //     //creat a string query with given columns
-    //     String::new()
-    // }
-}
+use tables::*;
+use crate::safe_expressions::{column, literal};
+
+
 
 fn main() {
-    println!("Hello, world!");
+    let query = query_from!(users::users, address::address)
+        .join::<phone::phone>(
+            literal(10).less(column(phone::id))
+                .and(
+                    column(phone::number)
+                        .cast::<i32>()
+                        .div(literal(1000))
+                        .equal(literal(9898))
+                )
+        ).where_clause(
+            column(users::name)
+                .like("%ll", Some(' '))
+        ).select_test(
+            (column(users::name),
+                    (column(phone::number),
+                     column(address::street)))
+        );
+
+    println!("{}", query.to_query());
 }

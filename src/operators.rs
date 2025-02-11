@@ -2,9 +2,11 @@ use std::fmt::Debug;
 use std::iter::Enumerate;
 use std::marker::PhantomData;
 use my_macros::{AutoQueryable, From, Queryable};
-use crate::{Query, Queryable};
-use crate::create_a_name::AutoQueryable;
-use crate::expressions::{Expression, RawTypes};
+use crate::query::the_query::Query;
+use crate::{Queryable};
+use crate::queryable::AutoQueryable;
+use crate::expressions::{Expression};
+use crate::expressions::raw_types::RawTypes;
 use crate::literals::{Bool, Literal, Null, Number};
 use crate::safe_expressions::*;
 use crate::convertible::*;
@@ -596,11 +598,10 @@ impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
 }
 
 mod tests {
-    use std::marker::PhantomData;
-    use crate::create_a_name::Queryable;
-    use crate::expressions::{Expression, RawTypes};
+    use crate::queryable::Queryable;
+    use crate::expressions::{Expression};
+    use crate::expressions::raw_types::RawTypes;
     use crate::literals::{Bool, Literal, Number};
-    use crate::literals::Bool::False;
     use crate::operators::{ArithmeticOperator, Binary, CastType, LogicalOperator, Operator};
     use crate::operators::NonBinary::Cast;
     use crate::operators::Operator::NonBinOperator;
