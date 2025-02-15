@@ -11,6 +11,7 @@
       <sourceFolder url="file://$MODULE_DIR$/EntityRepo/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/loh/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/queries_tests/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dsl/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/MyTrait/target" />
       <excludeFolder url="file://$MODULE_DIR$/p_macros/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
@@ -20,6 +21,7 @@
       <excludeFolder url="file://$MODULE_DIR$/EntityRepo/target" />
       <excludeFolder url="file://$MODULE_DIR$/loh/target" />
       <excludeFolder url="file://$MODULE_DIR$/queries_tests/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dsl/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
