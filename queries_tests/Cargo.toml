@@ -1,0 +1,7 @@
+[package]
+name = "queries_tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sql_query = {path = "../../sql_query"}
