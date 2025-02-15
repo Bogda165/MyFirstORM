@@ -8,12 +8,18 @@
       <sourceFolder url="file://$MODULE_DIR$/DB_shit/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Db_shit/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/macros_l/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/EntityRepo/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/loh/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/queries_tests/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/MyTrait/target" />
       <excludeFolder url="file://$MODULE_DIR$/p_macros/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/DB_shit/target" />
       <excludeFolder url="file://$MODULE_DIR$/Db_shit/target" />
       <excludeFolder url="file://$MODULE_DIR$/macros_l/target" />
+      <excludeFolder url="file://$MODULE_DIR$/EntityRepo/target" />
+      <excludeFolder url="file://$MODULE_DIR$/loh/target" />
+      <excludeFolder url="file://$MODULE_DIR$/queries_tests/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

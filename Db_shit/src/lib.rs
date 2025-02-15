@@ -18,66 +18,66 @@ use syn::__private::quote::quote;
 use crate::Attributes::{AUTO_I, PK};
 use crate::DbTypes::*;
 
-trait INSERTABLE {
+trait Insertable {
     fn for_insert(&self, num: i32) -> String;
 }
 
 #[derive(Debug, Clone)]
-pub enum HUI<T> {
+pub enum NotNull<T> {
     NULL,
     VALUE(T)
 }
 
-impl<T> ToSql for HUI<T>
+impl<T> ToSql for NotNull<T>
     where T: ToSql
 {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         match self {
-            HUI::NULL => {Null.to_sql()}
-            HUI::VALUE(val) => {
+            NotNull::NULL => {Null.to_sql()}
+            NotNull::VALUE(val) => {
                 val.to_sql()
             }
         }
     }
 }
 
-impl FromSql for HUI<i32> {
+impl FromSql for NotNull<i32> {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value {
             ValueRef::Null => {
-                Ok(HUI::NULL)
+                Ok(NotNull::NULL)
             }
             ValueRef::Integer(val) => {
                 //TODO fix to i64 uoy
-                Ok(HUI::VALUE(val as i32))
+                Ok(NotNull::VALUE(val as i32))
             }
             _ => Err(FromSqlError::InvalidType)
         }
     }
 }
 
-impl FromSql for HUI<f32> {
+impl FromSql for NotNull<f32> {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value {
             ValueRef::Null => {
-                Ok(HUI::NULL)
+                Ok(NotNull::NULL)
             }
             ValueRef::Real(val) => {
-                Ok(HUI::VALUE(val as f32))
+                Ok(NotNull::VALUE(val as f32))
             }
             _ => Err(FromSqlError::InvalidType)
         }
     }
 }
 
-impl FromSql for HUI<String> {
+impl FromSql for NotNull<String> {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value {
             ValueRef::Null => {
-                Ok(HUI::NULL)
+                Ok(NotNull::NULL)
             }
             ValueRef::Text(val) => {
-                Ok(HUI::VALUE(std::str::from_utf8(val).unwrap().to_string()))
+                Ok(NotNull::VALUE(std::str::from_utf8(val).unwrap().to_string()))
             }
             _ => Err(FromSqlError::InvalidType)
         }
@@ -88,9 +88,9 @@ impl FromSql for HUI<String> {
 #[get_types]
 #[derive(Debug)]
 pub enum DbTypes {
-    INTEGER_N(HUI<i32>),
-    FLOAT_N(HUI<f32>),
-    TEXT_N(HUI<String>),
+    INTEGER_N(NotNull<i32>),
+    FLOAT_N(NotNull<f32>),
+    TEXT_N(NotNull<String>),
     INTEGER(i32),
     FLOAT(f32),
     TEXT(String),
@@ -125,7 +125,7 @@ impl DbTypes {
     }
 }
 
-impl INSERTABLE for DbTypes {
+impl Insertable for DbTypes {
     fn for_insert(&self, num: i32) -> String {
         match self {
             INTEGER(val) => {
@@ -139,20 +139,20 @@ impl INSERTABLE for DbTypes {
             }
             INTEGER_N(val) => {
                 match val {
-                    HUI::NULL => {"NULL".to_string()}
-                    HUI::VALUE(val) => {val.to_string()}
+                    NotNull::NULL => {"NULL".to_string()}
+                    NotNull::VALUE(val) => {val.to_string()}
                 }
             }
             FLOAT_N(val) => {
                 match val {
-                    HUI::NULL => {"NULL".to_string()}
-                    HUI::VALUE(val) => {val.to_string()}
+                    NotNull::NULL => {"NULL".to_string()}
+                    NotNull::VALUE(val) => {val.to_string()}
                 }
             }
             TEXT_N(val) => {
                 match val {
-                    HUI::NULL => {"NULL".to_string()}
-                    HUI::VALUE(val) => {val.clone()}
+                    NotNull::NULL => {"NULL".to_string()}
+                    NotNull::VALUE(val) => {val.clone()}
                 }
             }
         }
@@ -169,6 +169,26 @@ impl ToSql for DbTypes {
             INTEGER_N(i) => {i.to_sql()},
             FLOAT_N(f) => {f.to_sql()},
             TEXT_N(t) => {t.to_sql()},
+        }
+    }
+}
+
+impl FromSql for DbTypes {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value {
+            ValueRef::Null => {
+                Err(FromSqlError::InvalidType)
+            }
+            ValueRef::Integer(val) => {
+                Ok(INTEGER(val as i32))
+            }
+            ValueRef::Real(val) => {
+                Ok(FLOAT(val as f32))
+            }
+            ValueRef::Text(val) => {
+                Ok(TEXT(std::str::from_utf8(val).unwrap().to_string()))
+            }
+            ValueRef::Blob(_) => {unreachable!("Fuck it")}
         }
     }
 }
@@ -227,7 +247,7 @@ pub trait Entity
 #[get_types]
 enum TestEnum {
     VALUE(i32),
-    VALUE2(HUI<i32>),
+    VALUE2(NotNull<i32>),
     VALUE3(String, i32, f32),
 }
 
