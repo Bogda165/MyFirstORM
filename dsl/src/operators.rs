@@ -1,9 +1,9 @@
+use crate::queryable::Queryable;
 use std::fmt::Debug;
 use std::iter::Enumerate;
 use std::marker::PhantomData;
 use my_macros::{AutoQueryable, From, Queryable};
 use crate::query::the_query::Query;
-use crate::{Queryable};
 use crate::queryable::AutoQueryable;
 use crate::expressions::{Expression};
 use crate::expressions::raw_types::RawTypes;

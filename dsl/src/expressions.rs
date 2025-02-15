@@ -1,7 +1,6 @@
 use crate::expressions::Expression::*;
 use my_macros::{AutoQueryable, From, Queryable};
 use crate::column::RawColumn;
-use crate::{Column};
 use crate::column::Table;
 use crate::convertible::{ConvertibleTo, TheType};
 use crate::expressions::raw_types::RawTypes;

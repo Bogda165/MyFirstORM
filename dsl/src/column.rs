@@ -47,15 +47,10 @@ impl Queryable for RawColumn {
 
 
 mod column_tests {
-    use crate::column::Table;
-    use my_macros::table;
-    use super::{Allowed, Column};
-    use crate::literals::*;
-    use crate::convertible::*;
-    use crate::queryable::Queryable;
-    use crate::expressions::raw_types::RawTypes;
     use crate::safe_expressions::SafeExpr;
-    use crate::column::RawColumn;
+use crate::literals::Null;
+use crate::convertible::ConvertibleTo;
+use my_macros::table;
 
     #[table]
     struct some_table {
