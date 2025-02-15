@@ -6,11 +6,11 @@ use MyTrait::MyTrait2;
 use rusqlite::{Row, Statement};
 use rusqlite::ffi::{SQLITE_OPEN_CREATE, SQLITE_OPEN_READWRITE};
 use Db_shit::{Attributes, DbTypes};
-use Db_shit::HUI;
+use Db_shit::NotNull;
 use crate::address::*;
 use crate::users::*;
 use rusqlite::{Connection, OpenFlags};
-use Db_shit::HUI::VALUE;
+use Db_shit::NotNull::VALUE;
 
 struct TableName {
     name: String
@@ -59,7 +59,7 @@ pub mod users {
         pub fn from_row(row: &Row) -> Self {
             users {
                 id: (
-                    DbTypes::INTEGER_N(row.get::<&str, HUI<i32>>("id").unwrap()),
+                    DbTypes::INTEGER_N(row.get::<&str, NotNull<i32>>("id").unwrap()),
                     Attributes::PK,
                     Attributes::AUTO_I,
                 ),
@@ -73,12 +73,11 @@ pub mod users {
         ///INTEGER_N(10, NEHUI)
         ///PK
         ///AUTO_I
-        pub id: HUI<i32>,
+        pub id: NotNull<i32>,
         ///TEXT
         pub text: String,
         pub some_val: String,
         ///FK("Address")
-        pub
     }
     impl Entity for Users {
         fn get_table_name() -> String {
@@ -119,9 +118,9 @@ pub mod users {
 impl Users {
     pub fn default() -> Users {
         Users {
-            id: HUI::NULL,
+            id: NotNull::NULL,
             text: "".to_string(),
-            some_val: "HUI".to_string(),
+            some_val: "NotNull".to_string(),
         }
     }
     pub fn new(id: i32, text: String, some_val: String) -> Users {
@@ -164,7 +163,7 @@ pub mod address {
         pub fn from_row(row: &Row) -> Self {
             address {
                 id: (
-                    DbTypes::INTEGER_N(row.get::<&str, HUI<i32>>("id").unwrap()),
+                    DbTypes::INTEGER_N(row.get::<&str, NotNull<i32>>("id").unwrap()),
                     Attributes::PK,
                     Attributes::AUTO_I,
                 ),
@@ -178,7 +177,7 @@ pub mod address {
         ///INTEGER_N
         ///PK
         ///AUTO_I
-        pub id: HUI<i32>,
+        pub id: NotNull<i32>,
         ///TEXT
         pub address: String,
     }
@@ -221,13 +220,13 @@ pub mod address {
 impl Address {
     pub fn new(addr: String) -> Self {
         Address {
-            id: HUI::NULL,
+            id: NotNull::NULL,
             address: addr,
         }
     }
     pub fn default() -> Self {
         Address {
-            id: HUI::NULL,
+            id: NotNull::NULL,
             address: "".to_string(),
         }
     }

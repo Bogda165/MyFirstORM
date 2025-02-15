@@ -334,7 +334,7 @@ mod many_to_many {
     #[test]
     fn many_to_many() {
         let conn =  Connection::open_with_flags(
-            "../test_db2.sqlite",
+            "../../resourses/test_db2.sqlite",
             OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
         ).unwrap();
 
@@ -496,7 +496,7 @@ mod one_to_many {
     #[test]
     fn test1() {
         let conn = Connection::open_with_flags(
-            "../test_db2.sqlite",
+            "../../resourses/test_db2.sqlite",
             OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
         ).unwrap();
 
@@ -838,7 +838,7 @@ mod hard_test {
     #[test]
     fn hard_test () {
         let conn = Connection::open_with_flags(
-            "../test_db2.sqlite",
+            "../../resourses/test_db2.sqlite",
             OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
         ).unwrap();
 
