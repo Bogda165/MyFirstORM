@@ -176,7 +176,7 @@ impl Queryable for LikeExpression {
 ///
 /// https://www.sqlite.org/lang_Expression.html#like
 #[derive(Debug, Clone, AutoQueryable, Queryable)]
-#[divide("path,GLOB,REGEX,MATCH")]
+#[divide = "path,GLOB,REGEX,MATCH"]
 #[path = "crate::operators"]
 enum LGRM{
     Like(LikeExpression),
@@ -254,7 +254,7 @@ impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
 
 
 #[derive(Debug, AutoQueryable, Clone, Queryable)]
-#[divide("AND,OR,XOR")]
+#[divide = "AND,OR,XOR"]
 #[path = "crate::operators"]
 enum LogicalOperator {
     AND(Expression, Expression),
@@ -301,7 +301,7 @@ impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
 }
 
 #[derive(Debug, Queryable, Clone, AutoQueryable)]
-#[divide("<=,<,>,>=,=")]
+#[divide = "<=,<,>,>=,="]
 #[path = "crate::operators"]
 enum ComparisonOperator {
     LessEqual(Expression, Expression),
@@ -354,7 +354,7 @@ impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
 
 /// only Binary operators, columns or numbers can be used
 #[derive(Debug, Queryable, Clone, AutoQueryable)]
-#[divide("+,-,*,/,%")]
+#[divide = "+,-,*,/,%"]
 #[path = "crate::operators"]
 enum ArithmeticOperator {
     ADD(Expression, Expression),
@@ -429,7 +429,7 @@ impl<T: TheType, AllowedTables> SafeExpr<T, AllowedTables> {
 
 /// Can be only used on integers and columns
 #[derive(Debug, Queryable, Clone, AutoQueryable)]
-#[divide("&,|,<<,>>")]
+#[divide = "&,|,<<,>>"]
 #[path = "crate::operators"]
 enum BitwiseOperator {
     AND(Expression, Expression),

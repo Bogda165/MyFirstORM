@@ -24,10 +24,11 @@ pub fn update_fields(data: DataStruct, name: &Ident) -> proc_macro2::TokenStream
                     field.attrs.clear();
                 }
 
-                quote! {
+                return quote! {
                     #comments_q
                     pub #field,
                 }
+
             });
 
             quote! {
@@ -39,6 +40,7 @@ pub fn update_fields(data: DataStruct, name: &Ident) -> proc_macro2::TokenStream
         }
     };
     quote! {
+        #[dsl::table]
         pub struct #name {
             #fields
         }

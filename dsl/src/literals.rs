@@ -107,6 +107,6 @@ mod tests {
         assert_eq!(exclude_braces(lit.to_query()), "True");
 
         let lit: Literal = Literal::StringLit("SomeString".into());
-        assert_eq!(exclude_braces(lit.to_query()), "SomeString");
+        assert_eq!(exclude_braces(lit.to_query()), "\"SomeString\"");
     }
 }

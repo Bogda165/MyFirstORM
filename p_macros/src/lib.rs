@@ -3,6 +3,7 @@ mod impl_for_shadow_table;
 mod modify_basic_struct;
 mod repo_struct;
 mod additional_functions;
+mod new_macros;
 
 extern crate proc_macro;
 use proc_macro::{TokenStream};
@@ -241,7 +242,7 @@ pub fn repo(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let repo = parse_macro_input!(input as DeriveInput);
 
     let repo_name = repo.ident;
-    let mut repo = match repo.data {
+    let repo = match repo.data {
         Data::Struct(table) => {table}
         Data::Enum(_) => {
             panic!("It should be a struct")
@@ -252,4 +253,20 @@ pub fn repo(_attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(init_repo_struct(&repo, &repo_name, &entity_ident, &table_ident))
+}
+
+#[proc_macro]
+// This macro must be used in the root of the project to generate multiple tables types
+pub fn from(input: TokenStream) -> TokenStream {
+
+    let types = parse_macro_input!(input with Punctuated::<Type, Token![,]>::parse_terminated);
+
+    TokenStream::from(crate::new_macros::table_def::impl_from(types))
+}
+
+#[proc_macro_attribute]
+pub fn new_table(_attrs: TokenStream, input: TokenStream) -> TokenStream {
+    let mut table = parse_macro_input!(input as DeriveInput);
+
+    TokenStream::from(crate::new_macros::table_def::impl_table(table))
 }

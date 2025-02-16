@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-syn = "1.0"       # Parsing the Rust code
+syn = "2.0.98"       # Parsing the Rust code
 quote = "1.0"     # Generating the code
 proc-macro2 = "1.0"  # Working with token streams
 

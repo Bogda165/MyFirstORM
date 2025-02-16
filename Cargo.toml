@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 rusqlite = "0.32.1"
-MyTrait = {path = "MyTrait"}
 Db_shit = {path = "Db_shit"}
 p_macros = {path = "p_macros"}
+dsl = {path = "dsl"}

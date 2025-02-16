@@ -5,35 +5,49 @@ use proc_macro::TokenStream;
 use std::env::var;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, parse_str, Attribute, Data, DeriveInput, Expr, Field, Fields, Lit, Path, Token, Type};
+use syn::{parse_macro_input, parse_str, Attribute, Data, DeriveInput, Expr, Field, Fields, Lit, Meta, Path, Token, Type};
 use syn::__private::TokenStream2;
 use syn::Member::Unnamed;
 use syn::punctuated::Punctuated;
 use crate::table_def::{impl_from, impl_table};
 
 fn get_module_path(attrs: &Vec<Attribute>, enum_name: String) -> Path {
-    let module_path = match attrs.iter().find(|attr| attr.path.is_ident("path")) {
+    let module_path = match attrs.iter().find(|attr| attr.meta.path().is_ident("path")) {
         Some(attr) => {
+            if let Meta::NameValue(ref _attr) = attr.meta {
+                if let Expr::Lit(ref literal) = _attr.value {
+                    if let Lit::Str(ref str_lit) = literal.lit {
+                         str_lit.value()
+                    } else { unreachable!() }
+                } else { unreachable!() }
+            } else { unreachable!() }
             //eprintln!("Hello I am there");
-            attr.tokens.to_string()
         },
         None => {panic!("No path provided possible error"); String::new()}
     };
 
-    let module_path = &module_path[3..module_path.len()-1];
+    eprintln!("Module path: {}", module_path);
+
     let module_path = format!("{}::{}", module_path, enum_name);
 
     parse_str::<Path>(&*module_path).unwrap()
 }
 
 fn get_divide_operators(attrs: &Vec<Attribute>) -> Vec<String> {
-    match attrs.iter().find(|attr| attr.path.is_ident("divide")) {
+    match attrs.iter().find(|attr| attr.meta.path().is_ident("divide")) {
         None => {
             vec![",".to_string()]
         }
         Some(attr) => {
-            let operators_string = attr.tokens.to_string();
-            let operators_string = &operators_string[2..operators_string.len() - 2];
+            let operators_string = if let Meta::NameValue(ref _attr) = attr.meta {
+                if let Expr::Lit(ref literal) = _attr.value {
+                    if let Lit::Str(ref str_lit) = literal.lit {
+                        str_lit.value()
+                    } else { unreachable!() }
+                } else { unreachable!() }
+            } else { unreachable!() };
+
+            eprintln!("Operators in string {}", operators_string);
             operators_string.split(",").map(|str| format!(" {str} ")).collect()
         },
     }
@@ -54,6 +68,8 @@ fn create_format(size: usize, divide: Vec<String>) -> String {
 
 #[proc_macro_derive(AutoQueryable, attributes(divide))]
 pub fn my_custom_derive(input: TokenStream) -> TokenStream {
+
+    eprintln!("Impl autoqueryable");
     let input = parse_macro_input!(input as DeriveInput);
 
     let enum_name = &input.ident;
@@ -69,6 +85,7 @@ pub fn my_custom_derive(input: TokenStream) -> TokenStream {
     let path = get_module_path(&input.attrs, enum_name.to_string());
 
     let divide_operator = get_divide_operators(&input.attrs);
+    eprintln!("Divide operators string: {:?}", divide_operator);
 
     let mut inside_match =  match input.data {
         Data::Enum(_enum) => {
@@ -149,6 +166,8 @@ pub fn my_custom_derive(input: TokenStream) -> TokenStream {
             }
         }
     };
+
+    eprintln!("Implemented");
 
     TokenStream::from(_return)
 }

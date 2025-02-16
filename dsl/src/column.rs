@@ -71,7 +71,7 @@ use my_macros::table;
 
         println!("{}", safe_expr.expr.clone().to_query());
 
-        assert_eq!("users_column + 10", exclude_braces(safe_expr.expr.to_query()));
+        assert_eq!("some_table.UsersColumn + 10", exclude_braces(safe_expr.expr.to_query()));
     }
 
     #[test]

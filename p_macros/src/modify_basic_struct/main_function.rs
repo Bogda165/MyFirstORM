@@ -26,7 +26,6 @@ pub fn create_macro(data: DataStruct, shadow_table_name_i: Ident, name: Ident, s
             use Db_shit::*;
 
             #[derive(Debug)]
-            #[crate::impl_table]
             #shadow_table
 
             #[doc = #shadow_table_name_s]
