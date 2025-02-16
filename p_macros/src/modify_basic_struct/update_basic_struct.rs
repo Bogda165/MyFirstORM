@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::quote;
-use syn::{DataStruct, Fields};
+use syn::{parse_quote, DataStruct, Fields};
 use crate::additional_functions::docs_manipulations::from_attribute_to_comment;
 
 pub fn update_fields(data: DataStruct, name: &Ident) -> proc_macro2::TokenStream {
@@ -14,12 +14,15 @@ pub fn update_fields(data: DataStruct, name: &Ident) -> proc_macro2::TokenStream
                         //eprintln!("{:?}", attribute.meta.path().get_ident().unwrap().to_string());
                         from_attribute_to_comment(attribute.clone())
                     });
-
-                    quote! {
-                        #(#comments)*
+                    if comments.clone().count() > 0 {
+                        quote! {
+                            #[column]
+                            #(#comments)*
+                        }
+                    } else {
+                        quote!{}
                     }
                 };
-
                 {
                     field.attrs.clear();
                 }
@@ -39,10 +42,10 @@ pub fn update_fields(data: DataStruct, name: &Ident) -> proc_macro2::TokenStream
             std::panic!("fields are not named wtf")
         }
     };
-    quote! {
-        #[dsl::table]
-        pub struct #name {
+
+    crate::new_macros::table_def::impl_table(parse_quote!(
+        struct #name {
             #fields
         }
-    }
+    ))
 }

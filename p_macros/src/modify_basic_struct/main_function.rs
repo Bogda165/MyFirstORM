@@ -28,7 +28,7 @@ pub fn create_macro(data: DataStruct, shadow_table_name_i: Ident, name: Ident, s
             #[derive(Debug)]
             #shadow_table
 
-            #[doc = #shadow_table_name_s]
+            //#[doc = #shadow_table_name_s]
             #updated_struct
 
             impl Entity for #name

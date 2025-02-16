@@ -1,3 +1,5 @@
+mod example;
+
 extern crate alloc;
 
 use Db_shit::Entity;
@@ -23,7 +25,6 @@ struct Users {
     text: String,
     some_val: String,
 }
-
 impl Users {
     pub fn default() -> Users {
         Users {
@@ -32,10 +33,10 @@ impl Users {
             some_val: "NotNull".to_string()
         }
     }
-    pub fn new(id: i32, text: String, some_val: String) -> Users {
+    pub fn new(_id: i32, _text: String, some_val: String) -> Users {
         Users {
-            id: VALUE(id),
-            text,
+            id: VALUE(_id),
+            text: _text,
             some_val,
         }
     }
@@ -49,7 +50,7 @@ struct Address {
     #[AUTO_I]
     id: NotNull<i32>,
     #[TEXT]
-    address: String,
+    _address: String,
 }
 
 
@@ -57,14 +58,14 @@ impl Address {
     pub fn new(addr: String) -> Self {
         Address {
             id: NotNull::NULL,
-            address: addr,
+            _address: addr,
         }
     }
 
     pub fn default() -> Self {
         Address {
             id: NotNull::NULL,
-            address: "".to_string()
+            _address: "".to_string()
         }
     }
 }

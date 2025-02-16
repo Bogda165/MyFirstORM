@@ -145,13 +145,12 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
 
 
     quote! {
-        use super::*;
-        use crate::column::Column;
-        use crate::column::RawColumn;
-        use crate::expressions::raw_types::RawTypes;
-        use crate::convertible::TheType;
-        use crate::column::Allowed;
-        use crate::column::Table;
+        use dsl::column::Column;
+        use dsl::column::RawColumn;
+        use dsl::expressions::raw_types::RawTypes;
+        use dsl::convertible::TheType;
+        use dsl::column::Allowed;
+        use dsl::column::Table;
 
         impl Table for #table_name {
             fn get_name() -> String {

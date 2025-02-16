@@ -1,2 +1,2 @@
 mod type_play;
-pub(crate) mod table_def;
+pub mod table_def;

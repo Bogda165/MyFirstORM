@@ -1,5 +1,4 @@
 
-use MyTrait::MyTrait2;
 use rusqlite::ffi::{SQLITE_OPEN_CREATE, SQLITE_OPEN_READWRITE};
 use Db_shit::*;
 use Db_shit::NotNull::VALUE;
@@ -26,11 +25,11 @@ pub mod users {
         }
         pub fn insert(&self) -> (String, (&DbTypes, &DbTypes)) {
             let query =
-                    format!(
-                        "INSERT INTO {0} ({1}) VALUES ({2});",
-                        "users",
-                        "text ,id".to_string(),
-                        "?, ?", );
+                format!(
+                    "INSERT INTO {0} ({1}) VALUES ({2});",
+                    "users",
+                    "text ,id".to_string(),
+                    "?, ?", );
             (query, (&self.text, &self.id.0))
         }
 
@@ -97,7 +96,7 @@ impl Users {
             some_val,
         }
     }
-//added
+    //added
     pub fn from_shadow_table(shadow_table: users::users) -> Users {
 
         let mut users = Users::default();
@@ -132,20 +131,20 @@ pub mod address {
         }
         pub fn insert(&self) -> (String, (&DbTypes, &DbTypes)) {
             let query =
-                    format!(
-                        "INSERT INTO {0} ({1}) VALUES ({2});",
-                        "address",
-                        "id ,address".to_string(),
-                        "?, ?",
-                    );
+                format!(
+                    "INSERT INTO {0} ({1}) VALUES ({2});",
+                    "address",
+                    "id ,address".to_string(),
+                    "?, ?",
+                );
             (query, (&self.id.0, &self.address))
         }
 
         //added
         // create a macro to accept infinitive amount of parameters, and convert it in one
         pub fn load(params: &str) -> String{
-                format!("SELECT * from {0}\n{1}",
-                        "address", params)
+            format!("SELECT * from {0}\n{1}",
+                    "address", params)
         }
 
 
