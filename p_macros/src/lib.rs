@@ -6,6 +6,7 @@ mod modify_basic_struct;
 mod repo_struct;
 mod additional_functions;
 mod new_macros;
+mod derive_orm_traits;
 
 extern crate proc_macro;
 use proc_macro::{TokenStream};
@@ -15,6 +16,7 @@ use std::vec::IntoIter;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote, ToTokens};
 use syn::{parenthesized, parse, parse_macro_input, parse_quote, token, AttrStyle, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, Item, ItemFn, ItemStruct, LitStr, MacroDelimiter, Meta, MetaList, Token, Type};
+use syn::__private::TokenStream2;
 use syn::Expr::Lit;
 use syn::Lit::Str;
 use syn::MacroDelimiter::Paren;
@@ -268,7 +270,49 @@ pub fn from(input: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn new_table(_attrs: TokenStream, input: TokenStream) -> TokenStream {
+    unreachable!();
     let mut table = parse_macro_input!(input as DeriveInput);
 
-    TokenStream::from(crate::new_macros::table_def::impl_table(table))
+    TokenStream::from(crate::new_macros::table_def::impl_table(table, false, quote!{}))
+}
+
+fn get_tuple_from_table(attrs_name: &str) -> TokenStream2{
+
+}
+
+#[proc_macro_derive(OrmTable)]
+pub fn orm_table_derive(input: TokenStream) -> TokenStream {
+    let mut _table = parse_macro_input!(input as DeriveInput);
+    let table_name = _table.ident;
+
+
+    let table = if let Data::Struct(table) = _table.data {
+        table
+    }else {
+        panic!("OrmTable must be implementted only ofr structs")
+    };
+
+    let inside_impl = crate::derive_orm_traits::orm_table::orm_table_derive_f(table_name.clone(), table);
+    let tuple = get_tuple_from_table("column");
+
+    let _final = {
+        let generics = _table.generics;
+
+        let where_clause = if let Some(where_clause) = generics.clone().where_clause {
+            quote!{#where_clause}
+        }else {
+            quote!{}
+        };
+
+        quote! {
+            use orm_traits::OrmTable;
+            impl #generics OrmTable<#tuple> for #table_name #generics
+                #where_clause
+            {
+                #inside_impl
+            }
+        }
+    };
+
+    TokenStream::from(_final)
 }

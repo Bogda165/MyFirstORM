@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::quote;
 use syn::{parse_quote, DataStruct, Fields};
+use syn::__private::TokenStream2;
 use crate::additional_functions::docs_manipulations::from_attribute_to_comment;
 
 pub fn update_fields(data: DataStruct, name: &Ident) -> proc_macro2::TokenStream {
@@ -43,9 +44,11 @@ pub fn update_fields(data: DataStruct, name: &Ident) -> proc_macro2::TokenStream
         }
     };
 
+    let doc_string = format!("Some string");
+
     crate::new_macros::table_def::impl_table(parse_quote!(
         struct #name {
             #fields
         }
-    ))
+    ), false, quote!{#[derive(Default, p_macros::OrmTable)]})
 }

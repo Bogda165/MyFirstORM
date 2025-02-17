@@ -5,7 +5,7 @@ use dsl::expressions::Expression::Raw;
 use dsl::expressions::raw_types::RawTypes;
 use crate::join::Join;
 
-mod join {
+pub mod join {
     pub trait Join
     where
         Self: Iterator
@@ -41,7 +41,7 @@ mod join {
 }
 
 
-struct OrmColumn {
+pub struct OrmColumn {
     name: String,
     attrs: Vec<String>
 }
@@ -63,7 +63,8 @@ impl<T: Column> From<T> for OrmColumn {
 }
 
 /// You must not implement this trait explicitly
-trait OrmTable<ColumnsT> : Table{
+pub trait OrmTable<ColumnsT> : Table + Default
+{
     fn columns(self) -> ColumnsT;
     /// Return a vec of all columns with their attributes, do not realise by yourself
     fn columns_strings() -> Vec<OrmColumn>;
@@ -86,6 +87,13 @@ trait OrmTable<ColumnsT> : Table{
                 Self::columns_strings().iter().map(|_| {"?".to_string()}).join_iter(", "),
             );
         (query, self.columns())
+    }
+
+    fn from_columns(columns: ColumnsT) -> Self
+    where
+        Self:Sized
+    {
+        Self::default()
     }
 }
 
@@ -149,6 +157,15 @@ mod tests {
         }
     }
 
+    impl Default for Users {
+        fn default() -> Self {
+            Users {
+                name: "some_name".into(),
+                id: -1,
+            }
+        }
+    }
+
     impl OrmTable<(String, i32)> for Users {
         fn columns(self) -> (String, i32) {
             (self.name, self.id)
@@ -162,6 +179,17 @@ mod tests {
             orm_column2.attrs = vec!["attrs".to_string()];
             vec![orm_column1, orm_column2]
         }
+
+        fn from_columns(columns: (String, i32)) -> Self
+        where
+            Self: Sized,
+        {
+            Users {
+                name: columns.0,
+                id: columns.1,
+                ..Default::default()
+            }
+        }
     }
 
     #[test]
@@ -171,5 +199,7 @@ mod tests {
 
         println!("Create: {}" , create_q);
         println!("Insert: {:?}", insert_q);
+
+        assert_eq!(Users{name: "hi".into(), id: 10}.insert_query(), Users::from_columns(("hi".to_string(), 10)).insert_query());
     }
 }

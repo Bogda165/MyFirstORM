@@ -1,6 +1,6 @@
 use proc_macro2::Ident;
 use quote::quote;
-use syn::{ Data, DeriveInput, Path, PathSegment, Token, Type};
+use syn::{Data, DeriveInput, Field, Path, PathSegment, Token, Type};
 use syn::__private::TokenStream2;
 use syn::punctuated::Punctuated;
 
@@ -57,7 +57,42 @@ pub fn impl_from(types: Punctuated<Type, Token![,]>) -> TokenStream2 {
     }
 }
 
-pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
+/// if the F func the None if the attribute wasn't find, and Some(index, TokenStream) if was
+pub fn iter_through_attrs<MatchF>(field: &mut Field, delete_attrs: bool, func: MatchF) -> Vec<TokenStream2>
+where
+    MatchF: Fn(&Field, String) -> Option<TokenStream2>,
+{
+    let attrs_amount = field.attrs.len();
+    let mut remove_attrs: Vec<usize> = vec![];
+
+    let opened_attrs= field.attrs.iter().zip(0..attrs_amount).map(|(attr, index)| {
+        match attr.meta.path().get_ident() {
+            None => { quote! {} }
+            Some(attr) => {
+                if let Some(ts)  = func(field, attr.to_string()) {
+                    remove_attrs.push(index);
+                    ts
+                }else {
+                    quote!{}
+                }
+            }
+        }
+    });
+
+    let _result = opened_attrs.collect();
+
+    if delete_attrs {
+        eprintln!("Removing attrs: {:?}", remove_attrs);
+        let length = remove_attrs.len();
+        remove_attrs.into_iter().zip(0..length).for_each(|(index, remove_i)| {
+            field.attrs.remove(remove_i - index);
+        });
+    }
+
+    _result
+}
+
+pub fn impl_table(mut table: DeriveInput, delete_attrs: bool, table_attrs: TokenStream2) -> TokenStream2{
 
     let table_name = table.clone().ident;
 
@@ -66,75 +101,59 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
     let _impl = match table.data {
         Data::Struct(ref mut table) => {
             table.fields.iter_mut().map(|field| {
-                let attrs_amount = field.attrs.len();
+
                 let field_name = field.clone().ident.unwrap();
                 let field_type = field.clone().ty;
                 let field_name_string = field_name.clone().to_string();
 
-                let mut remove_attrs: Vec<usize> = vec![];
+                let opened_attrs = iter_through_attrs(field, delete_attrs,
+                        |field, attrs_name|{
+                                match &*attrs_name {
+                                    "column" =>  {
 
-                let  opened_attrs= field.attrs.iter().zip(0..attrs_amount).map(|(attr, index)| {
-                    match attr.meta.path().get_ident() {
-                        None => { quote! {}}
-                        Some(attr) => {
-                            match &*attr.to_string() {
-                                "column" =>  {
-                                    remove_attrs.push(index);
+                                        Some(quote! {
+                                            pub struct #field_name;
 
-                                    quote! {
-                                        pub struct #field_name;
-
-                                        impl Default for #field_name {
-                                            fn default() -> Self {
-                                                #field_name {}
+                                            impl Default for #field_name {
+                                                fn default() -> Self {
+                                                    #field_name {}
+                                                }
                                             }
-                                        }
 
-                                        impl TheType for #field_name {
-                                            type Type = #field_type;
-                                        }
-
-
-                                        impl Into<RawTypes> for #field_name {
-                                            fn into(self) -> RawTypes {
-                                                RawTypes::Column(RawColumn{ table_name: #table_name_string.to_string(), name: #field_name_string.to_string() })
+                                            impl TheType for #field_name {
+                                                type Type = #field_type;
                                             }
-                                        }
 
-                                        impl Column for #field_name {
-                                            type Table = #table_name;
 
-                                            fn get_name() -> String {
-                                                #field_name_string.to_string()
+                                            impl Into<RawTypes> for #field_name {
+                                                fn into(self) -> RawTypes {
+                                                    RawTypes::Column(RawColumn{ table_name: #table_name_string.to_string(), name: #field_name_string.to_string() })
+                                                }
                                             }
-                                        }
+
+                                            impl Column for #field_name {
+                                                type Table = #table_name;
+
+                                                fn get_name() -> String {
+                                                    #field_name_string.to_string()
+                                                }
+                                            }
+                                        })
+                                    }
+                                    "null" => {
+                                        Some(quote! {
+                                            impl ConvertibleTo<Null> for #field_name {}
+                                        })
+                                    }
+                                    _ => {
+                                        None
                                     }
                                 }
-                                "null" => {
-                                    remove_attrs.push(index);
+                        });
 
-                                    quote! {
-                                        impl ConvertibleTo<Null> for #field_name {}
-                                    }
-                                }
-                                _ => {
-                                    quote!{}
-                                }
-                            }
-                        }
-                    }
-                });
-
-                let _return = quote! {
+                quote! {
                     #(#opened_attrs)*
-                };
-                eprintln!("Removing attrs: {:?}", remove_attrs);
-                let length = remove_attrs.len();
-                remove_attrs.into_iter().zip(0..length).for_each(|(index, remove_i)| {
-                    field.attrs.remove(remove_i - index);
-                });
-
-                _return
+                }
             })
         }
         _ => {
@@ -161,7 +180,7 @@ pub fn impl_table(mut table: DeriveInput) -> TokenStream2{
 
 
         #(#_impl) *
-
+        #table_attrs
         pub #table
     }
 }

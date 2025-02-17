@@ -1,7 +1,4 @@
-mod example;
-
 extern crate alloc;
-
 use Db_shit::Entity;
 use p_macros::{repo, impl_table};
 use p_macros::table;
