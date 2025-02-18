@@ -25,12 +25,12 @@ pub fn update_fields(data: DataStruct, name: &Ident) -> proc_macro2::TokenStream
                     }
                 };
                 {
-                    field.attrs.clear();
+                    //field.attrs.clear();
                 }
 
                 return quote! {
                     #comments_q
-                    pub #field,
+                    #field,
                 }
 
             });

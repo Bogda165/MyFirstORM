@@ -98,10 +98,26 @@ pub trait OrmTable<ColumnsT> : Table + Default
 }
 
 mod tests {
+    struct WrapInt {
+        val: i32,
+    }
+
+    impl From<i32> for WrapInt {
+        fn from(value: i32) -> Self {
+            WrapInt {val: value}
+        }
+    }
+
+    impl Into<i32> for WrapInt {
+        fn into(self) -> i32 {
+            self.val
+        }
+    }
+
     use super::*;
     pub struct Users {
         name: String,
-        id: i32,
+        id: WrapInt,
     }
     mod _name {
         use super::*;
@@ -161,14 +177,14 @@ mod tests {
         fn default() -> Self {
             Users {
                 name: "some_name".into(),
-                id: -1,
+                id: (-1).into(),
             }
         }
     }
 
     impl OrmTable<(String, i32)> for Users {
         fn columns(self) -> (String, i32) {
-            (self.name, self.id)
+            (self.name.into(), self.id.into())
         }
 
         fn columns_strings() -> Vec<OrmColumn> {
@@ -186,7 +202,7 @@ mod tests {
         {
             Users {
                 name: columns.0,
-                id: columns.1,
+                id: columns.1.into(),
                 ..Default::default()
             }
         }
@@ -195,11 +211,11 @@ mod tests {
     #[test]
     fn test1 () {
         let create_q = Users::create_query();
-        let insert_q = Users{ name: "bohdan".to_string(), id: 15 }.insert_query();
+        let insert_q = Users{ name: "bohdan".to_string(), id: 15.into() }.insert_query();
 
         println!("Create: {}" , create_q);
         println!("Insert: {:?}", insert_q);
 
-        assert_eq!(Users{name: "hi".into(), id: 10}.insert_query(), Users::from_columns(("hi".to_string(), 10)).insert_query());
+        assert_eq!(Users{name: "hi".into(), id: 10.into()}.insert_query(), Users::from_columns(("hi".to_string(), 10)).insert_query());
     }
 }

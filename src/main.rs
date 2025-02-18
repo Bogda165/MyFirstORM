@@ -45,6 +45,7 @@ struct Address {
     #[INTEGER_N]
     #[PK]
     #[AUTO_I]
+    #[constraints(Int, PK)]
     id: NotNull<i32>,
     #[TEXT]
     _address: String,

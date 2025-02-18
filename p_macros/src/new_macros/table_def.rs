@@ -3,6 +3,7 @@ use quote::quote;
 use syn::{Data, DeriveInput, Field, Path, PathSegment, Token, Type};
 use syn::__private::TokenStream2;
 use syn::punctuated::Punctuated;
+use crate::additional_functions::functions::iter_through_attrs;
 
 fn get_last_ident(path: &Path) -> Option<&Ident> {
     path.segments.last().map(|segment: &PathSegment| &segment.ident)
@@ -55,41 +56,6 @@ pub fn impl_from(types: Punctuated<Type, Token![,]>) -> TokenStream2 {
     quote! {
         #(#expanded)*
     }
-}
-
-/// if the F func the None if the attribute wasn't find, and Some(index, TokenStream) if was
-pub fn iter_through_attrs<MatchF>(field: &mut Field, delete_attrs: bool, func: MatchF) -> Vec<TokenStream2>
-where
-    MatchF: Fn(&Field, String) -> Option<TokenStream2>,
-{
-    let attrs_amount = field.attrs.len();
-    let mut remove_attrs: Vec<usize> = vec![];
-
-    let opened_attrs= field.attrs.iter().zip(0..attrs_amount).map(|(attr, index)| {
-        match attr.meta.path().get_ident() {
-            None => { quote! {} }
-            Some(attr) => {
-                if let Some(ts)  = func(field, attr.to_string()) {
-                    remove_attrs.push(index);
-                    ts
-                }else {
-                    quote!{}
-                }
-            }
-        }
-    });
-
-    let _result = opened_attrs.collect();
-
-    if delete_attrs {
-        eprintln!("Removing attrs: {:?}", remove_attrs);
-        let length = remove_attrs.len();
-        remove_attrs.into_iter().zip(0..length).for_each(|(index, remove_i)| {
-            field.attrs.remove(remove_i - index);
-        });
-    }
-
-    _result
 }
 
 pub fn impl_table(mut table: DeriveInput, delete_attrs: bool, table_attrs: TokenStream2) -> TokenStream2{

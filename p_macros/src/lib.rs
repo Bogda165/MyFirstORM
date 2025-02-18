@@ -25,6 +25,7 @@ use syn::punctuated::Punctuated;
 use syn::token::{Struct, Token};
 use Db_shit::*;
 use crate::additional_functions::construct_table::create_construct_table_from_doc;
+use crate::additional_functions::functions::iter_through_attrs;
 use crate::impl_for_shadow_table::main_function::generate_function;
 use crate::meta_data::MetaData;
 use crate::modify_basic_struct::main_function::create_macro;
@@ -276,8 +277,25 @@ pub fn new_table(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     TokenStream::from(crate::new_macros::table_def::impl_table(table, false, quote!{}))
 }
 
-fn get_tuple_from_table(attrs_name: &str) -> TokenStream2{
+fn get_tuple_from_table(table: &mut DataStruct, _attrs_name: &str) -> TokenStream2{
+    let types = table.fields.iter_mut().filter_map(|field| {
+        let _res = iter_through_attrs(field, false, |field, attr_name| {
+            if attr_name == _attrs_name  {
+                let field_name = field.clone().ident.unwrap();
+                Some(quote!{<#field_name as TheType>::Type})
+            }else {None}
+        });
 
+        if _res.len() == 0 {
+            None
+        }else {
+            Some(_res[0].clone())
+        }
+    });
+
+    quote!{
+        (#(#types), *)
+    }
 }
 
 #[proc_macro_derive(OrmTable)]
@@ -285,15 +303,16 @@ pub fn orm_table_derive(input: TokenStream) -> TokenStream {
     let mut _table = parse_macro_input!(input as DeriveInput);
     let table_name = _table.ident;
 
-
-    let table = if let Data::Struct(table) = _table.data {
+    let mut table = if let Data::Struct(table) = _table.data {
         table
     }else {
         panic!("OrmTable must be implementted only ofr structs")
     };
 
-    let inside_impl = crate::derive_orm_traits::orm_table::orm_table_derive_f(table_name.clone(), table);
-    let tuple = get_tuple_from_table("column");
+    let inside_impl = crate::derive_orm_traits::orm_table::orm_table_derive_f(table_name.clone(), table.clone());
+    let tuple = get_tuple_from_table(&mut table, "column");
+
+    _table.data = Data::Struct(table);
 
     let _final = {
         let generics = _table.generics;

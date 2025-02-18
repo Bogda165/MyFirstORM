@@ -13,9 +13,9 @@ pub fn create_macro(data: DataStruct, shadow_table_name_i: Ident, name: Ident, s
 
     let updated_struct = update_fields(data, &name);
 
-    let shadow_t_func = get_shadow_table(&construct_table_s, &shadow_table_name_i, &name);
+    //let shadow_t_func = get_shadow_table(&construct_table_s, &shadow_table_name_i, &name);
 
-    let shadow_table = create_shadow_table(&construct_table_s, &shadow_table_name_i);
+    //let shadow_table = create_shadow_table(&construct_table_s, &shadow_table_name_i);
 
     let from_shadow_t_f = from_shadow_table_f(&shadow_table_name_i, &name, &construct_table_s);
 
@@ -25,8 +25,8 @@ pub fn create_macro(data: DataStruct, shadow_table_name_i: Ident, name: Ident, s
         pub mod #shadow_table_name_i{
             use Db_shit::*;
 
-            #[derive(Debug)]
-            #shadow_table
+            //#[derive(Debug)]
+            //#shadow_table
 
             //#[doc = #shadow_table_name_s]
             #updated_struct
@@ -38,7 +38,7 @@ pub fn create_macro(data: DataStruct, shadow_table_name_i: Ident, name: Ident, s
                 }
             }
             impl #name {
-                #shadow_t_func
+                //#shadow_t_func
 
                 #from_shadow_t_f
             }

@@ -1,6 +1,7 @@
 use proc_macro2::Ident;
 use quote::quote;
-use syn::{Attribute, Meta};
+use syn::{Attribute, Field, Meta};
+use syn::__private::TokenStream2;
 use syn::Expr::Lit;
 use syn::Lit::Str;
 use crate::additional_functions::attributes_manipulations::is_in_allowed_attrs;
@@ -96,4 +97,39 @@ pub fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> proc_macro
     quote! {
         pub #name: (#(#attrs),* ),
     }
+}
+
+
+/// if the F func the None if the attribute wasn't find, and Some(index, TokenStream) if was
+pub fn iter_through_attrs<MatchF>(field: &mut Field, delete_attrs: bool, mut func: MatchF) -> Vec<TokenStream2>
+where
+    MatchF: FnMut(&Field, String) -> Option<TokenStream2>,
+{
+    let attrs_amount = field.attrs.len();
+    let mut remove_attrs: Vec<usize> = vec![];
+
+    let opened_attrs= field.attrs.iter().zip(0..attrs_amount).filter_map(|(attr, index)| {
+        match attr.meta.path().get_ident() {
+            None => { None }
+            Some(attr) => {
+                let token_stream =  func(field, attr.to_string());
+                if let Some(ref ts)  = token_stream {
+                    remove_attrs.push(index);
+                }
+                token_stream
+            }
+        }
+    });
+
+    let _result = opened_attrs.collect();
+
+    if delete_attrs {
+        eprintln!("Removing attrs: {:?}", remove_attrs);
+        let length = remove_attrs.len();
+        remove_attrs.into_iter().zip(0..length).for_each(|(index, remove_i)| {
+            field.attrs.remove(remove_i - index);
+        });
+    }
+
+    _result
 }
