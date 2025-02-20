@@ -7,9 +7,26 @@ use crate::additional_functions::functions::iter_through_attrs;
 use crate::get_tuple_from_table;
 
 fn columns_fn(table: &mut DataStruct) -> TokenStream2 {
-    let columns_types = get_tuple_from_table(table, "column");
+    let columns_types = get_tuple_from_table(table.clone(), "column");
 
-    let fields = table.clone().fields.into_iter().map(|field| {field.ident});
+    let fields = table.clone().fields.into_iter().filter_map(|mut field| {
+        let name = field.clone().ident.unwrap();
+        let temp_vec = iter_through_attrs(&mut field, false, |field, attr_name, _| {
+            match &*attr_name {
+                "column" => {
+                    Some(quote! {
+                        #name
+                    })
+                }
+                _ => None
+            }
+        });
+        if temp_vec.len() == 0{
+            None
+        }else {
+            Some(temp_vec[0].clone())
+        }
+    });
 
     quote!{
         fn columns(self) -> #columns_types {
@@ -22,51 +39,8 @@ fn is_correct_constraint(constraint: &Ident) -> Result<&Ident, ()> {
     Ok(constraint)
 }
 
-fn get_constraints<'a>(field: &Field) -> Vec<Ident> {
-    field.attrs.iter().filter_map(|attr| {
-        if let Some(ident) = attr.path().get_ident() {
-            if &*ident.to_string() == "constraints" {
-                match &attr.meta {
-                    Meta::Path(_) => {
-                        dbg!("path_type");
-                        panic!("No constraints were listed")
-                    }
-                    Meta::List(constraints) => {
-                        dbg!("list_type");
-                        let mut _result = vec![];
-
-                        constraints.parse_nested_meta(|meta| {
-                            match is_correct_constraint(meta.path.get_ident().unwrap()) {
-                                Ok(ident) => {
-                                    _result.push(ident.clone());
-                                }
-                                _ => { panic!("Unknown constraint") }
-                            }
-                            Ok(())
-                        }).expect("TODO: panic message");
-
-                        Some(_result)
-                    }
-                    Meta::NameValue(val) => {
-                        dbg!("name_value");
-                        if let Expr::Path(constraint_name) = &val.value {
-                            Some(vec![constraint_name.path.get_ident().expect("Unknown expression for constraint").clone()])
-                        }else {
-                            panic!("Unknown expression for constraint")
-                        }
-                    }
-                }
-            }else {
-                dbg!(&*ident.to_string());
-                None
-            }
-        }else {
-            None
-        }
-    }).fold(vec![], |mut vec, mut vec_ident| {
-        vec.append(&mut vec_ident);
-        vec
-    })
+pub fn get_constraints<'a>(field: &Field) -> Vec<Ident> {
+    crate::additional_functions::functions::get_inside_attrs(field, "constraint", is_correct_constraint)
 }
 
 fn columns_strings_fn(table: &mut DataStruct) -> TokenStream2 {
@@ -74,34 +48,47 @@ fn columns_strings_fn(table: &mut DataStruct) -> TokenStream2 {
         eprintln!("Constraints: {:?}", get_constraints(field));
     });
 
-    let columns = table.fields.iter().map(|field| {
-        let name = field.clone().ident.unwrap();
-        let constraints = get_constraints(field);
-        quote! {
-            {
-                let column = #name.into();
-                column.attrs = vec![#(#constraints), *]
+    let columns = table.fields.iter_mut().filter_map(|field| {
+        let temp_vec = iter_through_attrs(field, false, |field, attr_name, _| {
+            match &*attr_name {
+                "column" => {
+                    let constraints = get_constraints(field);
+                    let name = field.clone().ident.unwrap();
+                    Some(quote! {
+                        {
+                            let mut column: OrmColumn = #name.into();
+                            column.attrs = vec![#(#constraints.to_query()), *];
+                            column
+                        }
+                    })
+                }
+                _ => None
             }
+        });
+        if temp_vec.len() == 0{
+            None
+        }else {
+            Some(temp_vec[0].clone())
         }
     });
 
     quote! {
-        fn columns_string() -> Vec<OrmColumn> {
+        fn columns_strings() -> Vec<OrmColumn> {
             vec![#(#columns), *]
         }
     }
 }
 
-fn from_columns_fn(table: &mut DataStruct) -> TokenStream2 {
-    let tuple = get_tuple_from_table(table, "column");
-    let mut index = 0;
+fn from_columns_fn(table: &mut DataStruct, table_name: &Ident) -> TokenStream2 {
+    let tuple = get_tuple_from_table(table.clone(), "column");
+    let mut index = -1;
 
     //TODO handle situation when the sie of fields is 1
     let columns = table.fields.iter_mut().filter_map(|mut field| {
         let temp_vec =
-            iter_through_attrs(field, false, |field, attr_name| {
+            iter_through_attrs(field, false, |field, attr_name, _| {
                 match &*attr_name {
-                    "columncd ." => {
+                    "column" => {
                         eprintln!("column attr was found");
                         let name = field.clone().ident;
                         index += 1;
@@ -130,8 +117,9 @@ fn from_columns_fn(table: &mut DataStruct) -> TokenStream2 {
         where
             Self: Sized,
         {
-            Users {
+            #table_name {
                 #(#columns), *
+                ,
                 ..Default::default()
             }
         }
@@ -143,7 +131,7 @@ pub fn orm_table_derive_f(table_name: Ident, mut table: DataStruct) -> TokenStre
 
     let columns = columns_fn(&mut table);
     let columns_strings = columns_strings_fn(&mut table);
-    let from_columns = from_columns_fn(&mut table);
+    let from_columns = from_columns_fn(&mut table, &table_name);
 
     quote! {
         #columns

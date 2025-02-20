@@ -1,68 +1,72 @@
 extern crate alloc;
 use Db_shit::Entity;
-use p_macros::{repo, impl_table};
+use p_macros::{repo, impl_table, attrs_to_comments};
 use p_macros::table;
 use rusqlite::Row;
 use rusqlite::ffi::{SQLITE_OPEN_CREATE, SQLITE_OPEN_READWRITE};
 use Db_shit::{Attributes, DbTypes};
 use Db_shit::NotNull;
+use orm_traits::attributes::*;
 
 use crate::address::*;
 use crate::users::*;
+use p_macros::OrmTable;
+use orm_traits::{OrmColumn, OrmTable};
 use rusqlite::{Connection, OpenFlags};
 use Db_shit::NotNull::VALUE;
 
+#[derive(Default)]
 #[table("users")]
 struct Users {
-    #[INTEGER_N(10, NEHUI)]
-    #[PK]
-    #[AUTO_I]
-    id: NotNull<i32>,
-    #[TEXT]
-    text: String,
-    some_val: String,
+    #[column]
+    #[sql_type(Int)]
+    #[constraint(PrimaryKey)]
+    pub id: i32,
+    #[column]
+    #[sql_type(Text)]
+    pub text: String,
+    pub some_val: String,
 }
 impl Users {
     pub fn default() -> Users {
         Users {
-            id: NotNull::NULL,
+            id: 0,
             text: "".to_string(),
             some_val: "NotNull".to_string()
         }
     }
     pub fn new(_id: i32, _text: String, some_val: String) -> Users {
         Users {
-            id: VALUE(_id),
+            id: _id,
             text: _text,
             some_val,
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[p_macros::table("address")]
 struct Address {
-    #[INTEGER_N]
-    #[PK]
-    #[AUTO_I]
-    #[constraints(Int, PK)]
-    id: NotNull<i32>,
-    #[TEXT]
-    _address: String,
+    #[column]
+    #[sql_type(Int)]
+    pub id: i32,
+    #[column]
+    #[sql_type(Text)]
+    pub _address: String,
 }
 
 
 impl Address {
     pub fn new(addr: String) -> Self {
         Address {
-            id: NotNull::NULL,
+            id: 0,
             _address: addr,
         }
     }
 
     pub fn default() -> Self {
         Address {
-            id: NotNull::NULL,
+            id: 0,
             _address: "".to_string()
         }
     }
@@ -99,8 +103,9 @@ impl Address {
 
 fn main() {
 
-    // let address = Address::new("Bal 20".to_string());
-    // let mut a_r = AddrRepo::new();
-    // a_r.insert(Address { id: NotNull::VALUE(10), address: "Some address".to_string() })
+    let users = Users::from_columns((10, "name".to_string()));
+
+    println!("Inset query {:?}",users.insert_query());
+    println!("Create query {}", users::Users::create_query());
 
 }

@@ -1,9 +1,11 @@
+use proc_macro::Span;
 use proc_macro2::Ident;
 use quote::quote;
-use syn::{Data, DeriveInput, Field, Path, PathSegment, Token, Type};
+use syn::{Data, DataStruct, DeriveInput, Field, Path, PathSegment, Token, Type};
 use syn::__private::TokenStream2;
 use syn::punctuated::Punctuated;
 use crate::additional_functions::functions::iter_through_attrs;
+use crate::meta_data::{MetaData, TempData};
 
 fn get_last_ident(path: &Path) -> Option<&Ident> {
     path.segments.last().map(|segment: &PathSegment| &segment.ident)
@@ -58,22 +60,22 @@ pub fn impl_from(types: Punctuated<Type, Token![,]>) -> TokenStream2 {
     }
 }
 
-pub fn impl_table(mut table: DeriveInput, delete_attrs: bool, table_attrs: TokenStream2) -> TokenStream2{
-
-    let table_name = table.clone().ident;
+pub fn impl_table/*<FuncIter, FuncSig>*/((table, table_name): (&mut DataStruct, &Ident), delete_attrs: bool, table_attrs: TokenStream2, /*(modify_functions: Option<FuncIter>*/) -> TokenStream2
+// where
+//     FuncSig: FnOnce(&mut DataStruct),
+//     FuncIter: IntoIterator<Item = FuncSig>
+{
 
     let table_name_string = table_name.to_string();
 
-    let _impl = match table.data {
-        Data::Struct(ref mut table) => {
-            table.fields.iter_mut().map(|field| {
-
+    let _impl =
+        table.fields.iter_mut().map(|field| {
                 let field_name = field.clone().ident.unwrap();
                 let field_type = field.clone().ty;
                 let field_name_string = field_name.clone().to_string();
 
                 let opened_attrs = iter_through_attrs(field, delete_attrs,
-                        |field, attrs_name|{
+                        |field, attrs_name, attr|{
                                 match &*attrs_name {
                                     "column" =>  {
 
@@ -85,11 +87,6 @@ pub fn impl_table(mut table: DeriveInput, delete_attrs: bool, table_attrs: Token
                                                     #field_name {}
                                                 }
                                             }
-
-                                            impl TheType for #field_name {
-                                                type Type = #field_type;
-                                            }
-
 
                                             impl Into<RawTypes> for #field_name {
                                                 fn into(self) -> RawTypes {
@@ -111,6 +108,26 @@ pub fn impl_table(mut table: DeriveInput, delete_attrs: bool, table_attrs: Token
                                             impl ConvertibleTo<Null> for #field_name {}
                                         })
                                     }
+                                    "sql_type" => {
+                                        //get the type
+                                        let indents = crate::additional_functions::functions::get_inside_attrs(field, "sql_type", |ident| -> Result<&Ident, ()> {Ok(ident)});
+                                        assert_eq!(indents.len(), 1);
+                                        let type_ident = indents[0].clone();
+
+                                        let real_type_ident = TempData::new().attr_type[&*type_ident.to_string()].clone();
+
+                                        eprintln!("{}", quote!{
+                                            impl TheType for #field_name {
+                                                type Type = #real_type_ident;
+                                            }
+                                        });
+
+                                        Some(quote!{
+                                            impl TheType for #field_name {
+                                                type Type = #real_type_ident;
+                                            }
+                                        })
+                                    }
                                     _ => {
                                         None
                                     }
@@ -120,14 +137,13 @@ pub fn impl_table(mut table: DeriveInput, delete_attrs: bool, table_attrs: Token
                 quote! {
                     #(#opened_attrs)*
                 }
-            })
-        }
-        _ => {
-            panic!("must be a struct")
-        }
-    };
+            });
 
 
+
+    // if let Some(modify_fns) = modify_functions {
+    //     modify_fns.into_iter().for_each(|functions| {functions(table)});
+    // }
 
     quote! {
         use dsl::column::Column;
@@ -146,7 +162,5 @@ pub fn impl_table(mut table: DeriveInput, delete_attrs: bool, table_attrs: Token
 
 
         #(#_impl) *
-        #table_attrs
-        pub #table
     }
 }

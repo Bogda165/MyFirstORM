@@ -42,8 +42,8 @@ pub mod join {
 
 
 pub struct OrmColumn {
-    name: String,
-    attrs: Vec<String>
+    pub name: String,
+    pub attrs: Vec<String>
 }
 
 impl Into<String> for OrmColumn{
@@ -97,6 +97,36 @@ pub trait OrmTable<ColumnsT> : Table + Default
     }
 }
 
+pub mod attributes {
+
+    pub trait SqlAttribute {
+        fn to_query(self) -> String;
+    }
+    pub struct PrimaryKey;
+    impl SqlAttribute for PrimaryKey {
+        fn to_query(self) -> String {
+            "PRIMARY KEY".to_string()
+        }
+    }
+
+    struct Unique;
+
+    impl SqlAttribute for Unique {
+        fn to_query(self) -> String {
+            "UNIQUE".to_string()
+        }
+    }
+
+    pub struct AutoIncrement;
+
+    impl SqlAttribute for AutoIncrement {
+        fn to_query(self) -> String {
+            "AUTO INCREMENT".to_string()
+        }
+    }
+
+}
+
 mod tests {
     struct WrapInt {
         val: i32,
@@ -144,10 +174,17 @@ mod tests {
 
     mod _id {
         use super::*;
-        #[derive(Default)]
+
         pub struct id;
 
-        impl TheType for id { type Type = String; }
+        impl Default for id {
+            fn default() -> Self {
+                id {}
+            }
+        }
+
+
+        impl TheType for id { type Type = i32; }
 
         impl Into<RawTypes> for id {
             fn into(self) -> RawTypes {
@@ -165,7 +202,7 @@ mod tests {
     }
 
     use _id::id;
-
+    use crate::attributes::SqlAttribute;
 
     impl Table for Users {
         fn get_name() -> String {
@@ -182,21 +219,21 @@ mod tests {
         }
     }
 
-    impl OrmTable<(String, i32)> for Users {
-        fn columns(self) -> (String, i32) {
+    impl OrmTable<(<name as TheType>::Type, <id as TheType>::Type)> for Users {
+        fn columns(self) -> (<name as TheType>::Type, <id as TheType>::Type) {
             (self.name.into(), self.id.into())
         }
 
         fn columns_strings() -> Vec<OrmColumn> {
             let mut orm_column1: OrmColumn = id.into();
-            orm_column1.attrs = vec!["attrs".to_string()];
+            orm_column1.attrs = vec![crate::attributes::PrimaryKey.to_query()];
 
             let mut orm_column2: OrmColumn = name.into();
             orm_column2.attrs = vec!["attrs".to_string()];
-            vec![orm_column1, orm_column2]
+            vec![{ let mut column: OrmColumn = id.into(); column.attrs = vec![]; column }, orm_column2]
         }
 
-        fn from_columns(columns: (String, i32)) -> Self
+        fn from_columns(columns: (<name as TheType>::Type, <id as TheType>::Type)) -> Self
         where
             Self: Sized,
         {

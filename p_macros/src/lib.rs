@@ -20,12 +20,13 @@ use syn::__private::TokenStream2;
 use syn::Expr::Lit;
 use syn::Lit::Str;
 use syn::MacroDelimiter::Paren;
-use syn::parse::{Parse, ParseStream};
+use syn::parse::{Parse, ParseStream, Parser};
 use syn::punctuated::Punctuated;
 use syn::token::{Struct, Token};
 use Db_shit::*;
 use crate::additional_functions::construct_table::create_construct_table_from_doc;
-use crate::additional_functions::functions::iter_through_attrs;
+use crate::additional_functions::docs_manipulations::from_attribute_to_comment;
+use crate::additional_functions::functions::{iter_through_attrs, orm_table_derive_f};
 use crate::impl_for_shadow_table::main_function::generate_function;
 use crate::meta_data::MetaData;
 use crate::modify_basic_struct::main_function::create_macro;
@@ -144,20 +145,11 @@ pub fn table(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let shadow_table_name = parse_macro_input!(_attr as LitStr);
     let shadow_table_name_i = Ident::new(&shadow_table_name.value(), shadow_table_name.span());
     let input = parse_macro_input!(item as DeriveInput);
-    let name = input.ident;
+    let name = input.clone().ident;
 
 
-    let data = match input.data {
-        Data::Struct(data) => {
-            data
-        }
-        _ => {
-            panic!("Not a structure");
-        }
-    };
 
-
-    let macro_res = create_macro(data, shadow_table_name_i, name, shadow_table_name);
+    let macro_res = create_macro(input, shadow_table_name_i, name, shadow_table_name);
 
     TokenStream::from(macro_res)
 }
@@ -269,17 +261,38 @@ pub fn from(input: TokenStream) -> TokenStream {
     TokenStream::from(crate::new_macros::table_def::impl_from(types))
 }
 
+
 #[proc_macro_attribute]
-pub fn new_table(_attrs: TokenStream, input: TokenStream) -> TokenStream {
-    unreachable!();
+pub fn attrs_to_comments(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     let mut table = parse_macro_input!(input as DeriveInput);
 
-    TokenStream::from(crate::new_macros::table_def::impl_table(table, false, quote!{}))
+    attrs_to_comments_f(&mut table);
+
+    TokenStream::from(quote!{
+        #table
+    })
 }
 
-fn get_tuple_from_table(table: &mut DataStruct, _attrs_name: &str) -> TokenStream2{
-    let types = table.fields.iter_mut().filter_map(|field| {
-        let _res = iter_through_attrs(field, false, |field, attr_name| {
+fn attrs_to_comments_f(table: &mut DeriveInput){
+    let new_fields = match &mut table.data {
+        Data::Struct(_table) => {
+            _table.fields.iter_mut().for_each(|field| {
+                field.attrs.iter_mut().for_each(|attr| {
+                    let new_attr = from_attribute_to_comment(attr.clone());
+                    let parser = Attribute::parse_outer;
+                    let new_attr_attr = parser.parse2(new_attr).unwrap_or_else(|_| vec![]);
+                    *attr = new_attr_attr[0].clone()
+                });
+            })
+        }
+        Data::Enum(_) => {unreachable!()}
+        Data::Union(_) => {unreachable!()}
+    };
+}
+
+fn get_tuple_from_table(mut table: DataStruct, _attrs_name: &str) -> TokenStream2{
+    let types = &mut table.fields.iter_mut().filter_map(|field| {
+        let _res = iter_through_attrs(field, false, |field, attr_name, _| {
             if attr_name == _attrs_name  {
                 let field_name = field.clone().ident.unwrap();
                 Some(quote!{<#field_name as TheType>::Type})
@@ -301,37 +314,10 @@ fn get_tuple_from_table(table: &mut DataStruct, _attrs_name: &str) -> TokenStrea
 #[proc_macro_derive(OrmTable)]
 pub fn orm_table_derive(input: TokenStream) -> TokenStream {
     let mut _table = parse_macro_input!(input as DeriveInput);
-    let table_name = _table.ident;
 
-    let mut table = if let Data::Struct(table) = _table.data {
-        table
-    }else {
-        panic!("OrmTable must be implementted only ofr structs")
-    };
-
-    let inside_impl = crate::derive_orm_traits::orm_table::orm_table_derive_f(table_name.clone(), table.clone());
-    let tuple = get_tuple_from_table(&mut table, "column");
-
-    _table.data = Data::Struct(table);
-
-    let _final = {
-        let generics = _table.generics;
-
-        let where_clause = if let Some(where_clause) = generics.clone().where_clause {
-            quote!{#where_clause}
-        }else {
-            quote!{}
-        };
-
-        quote! {
-            use orm_traits::OrmTable;
-            impl #generics OrmTable<#tuple> for #table_name #generics
-                #where_clause
-            {
-                #inside_impl
-            }
-        }
-    };
+    let _final = orm_table_derive_f(_table);
 
     TokenStream::from(_final)
 }
+
+

@@ -1,11 +1,15 @@
+use quote::quote;
 use std::collections::HashMap;
+use proc_macro2::Ident;
+use syn::__private::TokenStream2;
+use syn::Meta;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub(crate) struct MetaData <'a>{
     pub attr_type: HashMap<&'a str, &'a str>,
 }
 impl<'a> MetaData<'a> {
-    pub fn default() -> MetaData<'a> {
+    pub fn old_db() -> MetaData<'a> {
         let mut set = HashMap::new();
         set.insert("INTEGER",  "INTEGER");
         set.insert( "FLOAT",  "REAL");
@@ -20,4 +24,30 @@ impl<'a> MetaData<'a> {
             attr_type: set
         }
     }
+
+    pub fn sqlite_rust_types() -> MetaData<'a> {
+        MetaData {
+            attr_type: HashMap::from([
+                ("Int", "i32"),
+                ("Real", "f32"),
+            ]),
+        }
+    }
 }
+
+pub(crate) struct TempData<'a> {
+    pub attr_type: HashMap<&'a str, TokenStream2>,
+}
+
+impl<'a> TempData<'a> {
+    pub fn new() -> TempData<'a> {
+        TempData { attr_type: HashMap::from([
+            ("Int", quote!{i32}),
+            ("Real", quote!{f32}),
+            ("Text", quote!{String}),
+        ])
+        }
+
+    }
+}
+
