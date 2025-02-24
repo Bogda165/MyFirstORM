@@ -10,12 +10,13 @@ mod derive_orm_traits;
 
 extern crate proc_macro;
 use proc_macro::{TokenStream};
+use std::default::Default;
 use std::panic;
 use std::str::FromStr;
 use std::vec::IntoIter;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote, ToTokens};
-use syn::{parenthesized, parse, parse_macro_input, parse_quote, token, AttrStyle, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, Item, ItemFn, ItemStruct, LitStr, MacroDelimiter, Meta, MetaList, Token, Type};
+use syn::{parenthesized, parse, parse_macro_input, parse_quote, token, AttrStyle, Attribute, Data, DataStruct, DeriveInput, Error, Expr, ExprLit, Field, Fields, FieldsNamed, Item, ItemFn, ItemStruct, LitStr, MacroDelimiter, Meta, MetaList, Path, Token, Type};
 use syn::__private::TokenStream2;
 use syn::Expr::Lit;
 use syn::Lit::Str;
@@ -321,3 +322,159 @@ pub fn orm_table_derive(input: TokenStream) -> TokenStream {
 }
 
 
+// #[proc_macro_derive(OrmRepo)]
+// pub fn orm_repo_derive(input: TokenStream) -> TokenStream {
+//     let mut repo_struct = parse_macro_input!(input as DeriveInput);
+//
+//     let _final = orm_repo_derive_f(repo_struct);
+//
+//     return TokenStream::from(_final)
+//
+// }
+
+struct CommaPath {
+    value: Punctuated<Path, Token![,]>,
+}
+
+enum ParsingState {
+    Comma,
+    Field
+}
+
+impl ParsingState {
+    fn change(&mut self) {
+        match self {
+            ParsingState::Comma => { *self = ParsingState::Field }
+            ParsingState::Field => { *self = ParsingState::Comma }
+        }
+    }
+}
+
+impl Parse for CommaPath {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut res = CommaPath {value: Punctuated::default()};
+        let mut state = ParsingState::Field;
+        while(!input.is_empty()) {
+            match state {
+                ParsingState::Comma => { input.parse::<Token![,]>()?; }
+                ParsingState::Field => { res.value.push(input.parse::<Path>()?); }
+            };
+            state.change();
+        }
+
+        Ok(res)
+    }
+}
+
+impl Into<Vec<Path>> for CommaPath {
+    fn into(self) -> Vec<Path> {
+        self.value.into_iter().map(|element| {element}).collect()
+    }
+}
+
+#[proc_macro_attribute]
+pub fn data_base(_attrs: TokenStream, input: TokenStream) -> TokenStream {
+    let mut db_struct = parse_macro_input!(input as DeriveInput);
+
+    eprintln!("parsed");
+    let mut table_name_query: Option<String> = None;
+    let mut from_tables: Vec<Path> = vec![];
+
+    db_struct.attrs.iter_mut().for_each(|attr| {
+        match &*attr.meta.path().get_ident().unwrap().to_string() {
+            "name" =>  {
+                match attr.meta {
+                    Meta::Path(_) => {}
+                    Meta::List(_) => {}
+                    Meta::NameValue(ref value) => {
+                        match value.value {
+                            Expr::Lit(ref lit) => {
+                                match lit.lit {
+                                    Str(ref name) => {
+                                        table_name_query = Some(name.clone().value())
+                                    }
+                                    _ => {
+                                        panic!("The name must be defined with string");
+                                    }
+                                }
+                                eprintln!("string lit");
+                            }
+                            _ => {
+                                panic!("the name must be  astring literal");
+                            }
+                        }
+                    }
+                }
+            }
+            "from" => {
+                match attr.meta {
+                    Meta::Path(_) => {}
+                    Meta::List(ref listed_values) => {
+                        from_tables = syn::parse::<CommaPath>(TokenStream::from(listed_values.clone().tokens)).unwrap().into();
+                    }
+                    Meta::NameValue(_) => {}
+                }
+            }
+            _ => {}
+        }
+    });
+
+    let data_base_struct = match &mut db_struct.data {
+        Data::Struct(res) => {res}
+        Data::Enum(_) => {panic!("must be a struct")}
+        Data::Union(_) => {panic!("must be a struct")}
+    };
+
+    match &mut data_base_struct.fields {
+        Fields::Named(fields) => {
+            let new_field = TokenStream::from(quote!({connection: Option<Connection>}));
+            fields.named.push(parse_macro_input!(new_field as FieldsNamed).named.get(0).unwrap().clone());
+        }
+        Fields::Unnamed(_) => {panic!("Fields of the db myst be named")}
+        Fields::Unit => {panic!("Fields of the db myst be named")}
+    };
+
+
+    let table_name = db_struct.ident.clone();
+
+    let generics = db_struct.generics.clone();
+
+    if table_name_query == None {
+        table_name_query = Some(table_name.to_string());
+    }
+
+    db_struct.attrs = vec![];
+
+    TokenStream::from(quote!{
+        from!(#(#from_tables), *);
+
+        #[derive(Default)]
+        #db_struct
+
+        impl OrmDataBase for #table_name{
+
+            fn get_connection(&self) -> &Option<Connection> {
+                &self.connection
+            }
+
+            fn get_connection_mut(&mut self) -> &mut Option<Connection> {
+                &mut self.connection
+            }
+
+            fn get_name() -> String {
+                #table_name_query.to_string()
+            }
+        }
+
+        impl #generics #table_name #generics {
+            fn connect(&mut self) {
+                self.connection = Some(
+                    Connection::open_with_flags(
+                        #table_name_query,
+                        OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
+                    ).unwrap()
+                )
+            }
+        }
+    })
+}

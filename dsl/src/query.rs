@@ -119,7 +119,7 @@ pub mod the_query {
 
     impl <Tables> Queryable for Query<Tables> {
         fn convert_to_query(&self) -> Option<String> {
-            Some(format!{"{select_c}{where_c}{join_c}{from_c}",
+            Some(format!{"{select_c}{from_c}{where_c}{join_c};",
                          where_c = self.where_clause.to_query(),
 
                          join_c = self.joins.iter()
@@ -226,7 +226,7 @@ pub mod from {
 
     impl<T> Queryable for FromTables<T> {
         fn convert_to_query(&self) -> Option<String> {
-            Some(format!{"FROM {}", self.tables_query.clone().unwrap()})
+            Some(format!{"FROM {}\n", self.tables_query.clone().unwrap()})
         }
     }
     #[macro_export]

@@ -157,9 +157,10 @@ pub fn orm_table_derive_f(input: DeriveInput) -> TokenStream2 {
 
         quote! {
             use orm_traits::OrmTable;
-            impl #generics OrmTable<#tuple> for #table_name #generics
+            impl #generics OrmTable for #table_name #generics
                 #where_clause
             {
+                type ColumnsT = #tuple;
                 #inside_impl
             }
         }

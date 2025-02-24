@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 dsl = {path = "../dsl"}
+rusqlite = "0.32.1"
