@@ -1,4 +1,3 @@
-use proc_macro::Span;
 use proc_macro2::Ident;
 use quote::quote;
 use syn::{Data, DataStruct, DeriveInput, Field, Path, PathSegment, Token, Type};
@@ -60,10 +59,7 @@ pub fn impl_from(types: Punctuated<Type, Token![,]>) -> TokenStream2 {
     }
 }
 
-pub fn impl_table/*<FuncIter, FuncSig>*/((table, table_name): (&mut DataStruct, &Ident), delete_attrs: bool, table_attrs: TokenStream2, /*(modify_functions: Option<FuncIter>*/) -> TokenStream2
-// where
-//     FuncSig: FnOnce(&mut DataStruct),
-//     FuncIter: IntoIterator<Item = FuncSig>
+pub fn impl_table((table, table_name): (&mut DataStruct, &Ident), delete_attrs: bool, table_attrs: TokenStream2) -> TokenStream2
 {
 
     let table_name_string = table_name.to_string();
@@ -96,6 +92,8 @@ pub fn impl_table/*<FuncIter, FuncSig>*/((table, table_name): (&mut DataStruct, 
 
                                             impl Column for #field_name {
                                                 type Table = #table_name;
+
+                                                const FULL_NAME: &'static str = concat!("{}_{}", #field_name_string, #table_name_string);
 
                                                 fn get_name() -> String {
                                                     #field_name_string.to_string()
@@ -146,12 +144,6 @@ pub fn impl_table/*<FuncIter, FuncSig>*/((table, table_name): (&mut DataStruct, 
     // }
 
     quote! {
-        use dsl::column::Column;
-        use dsl::column::RawColumn;
-        use dsl::expressions::raw_types::RawTypes;
-        use dsl::convertible::TheType;
-        use dsl::column::Allowed;
-        use dsl::column::Table;
 
         impl Table for #table_name {
             fn get_name() -> String {

@@ -291,6 +291,17 @@ pub mod select {
             Some(format!{"SELECT {}\n", self.query})
         }
     }
+
+    #[macro_export]
+    macro_rules! some_select {
+        () => {};
+        ($ident:ty as $str:literal, $($rest:tt)*) => {};
+        ($ident:ty, $($rest:tt)*) => {};
+        ($ident:ty as $str:literal) => {};
+        ($ident:ty) => {
+            (ty, )
+        };
+    }
 }
 
 pub mod join {
@@ -331,37 +342,49 @@ mod tests {
     mod tables {
         use super::*;
         pub mod table1 {
-            use super::*;
+            use rusqlite::types::FromSqlResult;
+use rusqlite::types::ValueRef;
+use super::*;
 
             #[table]
             struct table1 {
                 #[column]
+                #[sql_type(Int)]
                 id: i32,
+                #[sql_type(Text)]
                 #[column]
                 name: String,
             }
         }
 
         pub mod table2 {
-            use super::*;
+            use rusqlite::types::FromSqlResult;
+use rusqlite::types::ValueRef;
+use super::*;
 
             #[table]
             struct table2 {
                 #[column]
+                #[sql_type(Int)]
                 id: f32,
                 #[column]
+                #[sql_type(Text)]
                 adress: String,
             }
         }
 
         pub mod table3 {
-            use super::*;
+            use rusqlite::types::FromSqlResult;
+use rusqlite::types::ValueRef;
+use super::*;
 
             #[table]
             struct table3 {
                 #[column]
+                #[sql_type(Int)]
                 id: f32,
                 #[column]
+                #[sql_type(Text)]
                 address: String,
             }
         }
@@ -467,7 +490,7 @@ mod tests {
                         SafeExpr::<table3::id, _>::column()
                     )
             )
-            .select_test((SafeExpr::<table1::id, _>::column(), (SafeExpr::<table1::id, _>::column(), SafeExpr::<table2::id, _>::column())))
+            .select_test(((SafeExpr::<table1::id, _>::column(), "some_column"), ((SafeExpr::<table1::id, _>::column(), "some_another_column"), (SafeExpr::<table2::id, _>::column(), "way_another_column"))))
             .to_query();
 
         println!("{}", query);

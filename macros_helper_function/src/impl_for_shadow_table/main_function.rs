@@ -1,10 +1,9 @@
-use proc_macro::TokenStream;
 use std::collections::HashMap;
 use proc_macro2::{Ident};
 use quote::quote;
 use syn::{Attribute, DeriveInput, Type};
-use Db_shit::{Attributes, DbTypes};
-use crate::additional_functions::attributes_manipulations::{create_attr_with_type, to_string};
+use syn::__private::TokenStream2;
+use crate::additional_functions::attributes_manipulations::{to_string};
 use crate::meta_data::MetaData;
 
 
@@ -112,85 +111,4 @@ fn load_function(table_name: &Ident) -> proc_macro2::TokenStream {
             format!("SELECT * from {0}\n{1}", #table_name_s, params)
         }
     }
-}
-
-
-fn from_row(shadow_t_ident: &Ident, construct_table_s: &HashMap<Ident, Vec<Attribute>>) -> proc_macro2::TokenStream {
-
-    let inside = construct_table_s.iter().map(|field| {
-        let name = field.0;
-        let attrs = field.1;
-
-        if attrs.len() <= 0 {
-            return quote!{};
-        }
-
-        let mut id = -1;
-
-        let attributes_parsed = attrs.iter().map(|attr| {
-            id += 1;
-            let inside_dv_type_fn = |input: proc_macro2::TokenStream| -> proc_macro2::TokenStream{
-                let all_types: HashMap<String, Type> = DbTypes::get_types_nt();
-
-                let _type = all_types.get(&attr.meta.path().get_ident().unwrap().to_string()).unwrap();
-                let _input_str = input.to_string();
-
-
-                quote! {
-                    row.get::<&str, #_type>(#_input_str).unwrap()
-                }
-            };
-
-            match create_attr_with_type(attr, name, inside_dv_type_fn) {
-                Ok(attr) => {attr}
-                Err(_) => {
-                    std::panic!("Not allowed type or attr")
-                }
-            }
-
-        });
-
-        quote! {
-            #name: (
-                #(#attributes_parsed),*
-            )
-        }
-    });
-
-    quote! {
-         pub fn from_row(row: &Row) -> Self {
-            #shadow_t_ident {
-                #(#inside),*
-            }
-        }
-    }
-}
-
-pub fn generate_function(input: &DeriveInput, construct_table_s: HashMap<Ident, Vec<Attribute>>, table_name_ident: &Ident) -> TokenStream{
-    let meta_data = MetaData::default();
-
-    //create an impl for table
-    let create_function = for_create_function(table_name_ident, &construct_table_s, &meta_data);
-    eprintln!("create method created");
-
-    let insert_function = insert_function(table_name_ident, &construct_table_s);
-
-    let load_function = load_function(table_name_ident);
-
-    let from_row_function = from_row(table_name_ident, &construct_table_s);
-
-    TokenStream::from(quote! {
-        use rusqlite::Row;
-        #input
-        impl #table_name_ident{
-
-            #create_function
-
-            #insert_function
-
-            #load_function
-
-            #from_row_function
-        }
-    })
 }

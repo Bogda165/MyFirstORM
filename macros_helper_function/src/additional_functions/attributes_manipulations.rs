@@ -4,56 +4,8 @@ use proc_macro2::{Ident, Literal, Span};
 use quote::quote;
 use syn::{parse_quote, AttrStyle, Attribute, Meta, MetaList};
 use syn::MacroDelimiter::Paren;
-use Db_shit::{Attributes, DbTypes};
 use crate::meta_data::MetaData;
 
-pub fn is_in_allowed_attrs(input: &Ident) -> Result<((proc_macro2::TokenStream)), (())> {
-    let input_name = input.to_string();
-    let attrs = Attributes::get_variants();
-    let types = DbTypes::get_variants();
-
-    if attrs.contains(&input_name) {
-        Ok(quote! {
-            Attributes
-        })
-    }else if types.contains(&input_name) {
-        Ok(quote!{
-            DbTypes
-        })
-    } else {
-        return Err(())
-    }
-
-}
-
-pub fn create_attr_with_type<F: Fn(proc_macro2::TokenStream) -> proc_macro2::TokenStream>(input: &Attribute, field_name: &Ident, closure: F) -> Result<((proc_macro2::TokenStream)), (())> {
-    let input_s = input.meta.path().get_ident().unwrap().to_string();
-    let attrs = Attributes::get_variants();
-    let types = DbTypes::get_variants();
-    let input_ident = input.meta.path().get_ident().unwrap();
-
-    if attrs.contains(&input_s) {
-        Ok(match input.meta.require_list(){
-            Ok(list) => {
-                quote!{
-                    Attributes::#list
-                }
-            }
-            Err(_) => {
-                quote!{
-                    Attributes::#input_ident
-                }
-            }
-        })
-    }else if types.contains(&input_s) {
-        let inside_db_type = closure(quote! { #field_name });
-        Ok(quote!{
-            DbTypes::#input_ident( #inside_db_type )
-        })
-    } else {
-        return Err(())
-    }
-}
 
 pub fn to_string<'a, 'b>(attr: &'a Ident, meta_data: MetaData<'b>) -> &'b str {
     let attr_name = &*attr.to_string();

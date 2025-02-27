@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 my_macros = {path = "my_macros" }
+rusqlite = "0.32.1"
 
 [lib]
 name = "dsl"

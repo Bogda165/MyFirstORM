@@ -4,7 +4,11 @@ use syn::{Data, DataStruct, DeriveInput, Error, Expr, Field, Meta, Path, PathSeg
 use syn::__private::TokenStream2;
 use syn::punctuated::Punctuated;
 use crate::additional_functions::functions::iter_through_attrs;
-use crate::get_tuple_from_table;
+use crate::additional_functions::functions::get_tuple_from_table;
+
+fn is_correct_constraint(constraint: &Ident) -> Result<&Ident, ()> {
+    Ok(constraint)
+}
 
 fn columns_fn(table: &mut DataStruct) -> TokenStream2 {
     let columns_types = get_tuple_from_table(table.clone(), "column");
@@ -33,10 +37,6 @@ fn columns_fn(table: &mut DataStruct) -> TokenStream2 {
             (#(self.#fields.into()),*)
         }
     }
-}
-
-fn is_correct_constraint(constraint: &Ident) -> Result<&Ident, ()> {
-    Ok(constraint)
 }
 
 pub fn get_constraints<'a>(field: &Field) -> Vec<Ident> {
@@ -126,12 +126,24 @@ fn from_columns_fn(table: &mut DataStruct, table_name: &Ident) -> TokenStream2 {
     }
 }
 
+fn from_sql_impl(table_name: &Ident) -> TokenStream2 {
+    quote! {
+        use rusqlite::types::FromSql;
+        impl FromSql for #table_name {
+        fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+            todo!()
+        }
+    }
+    }
+}
+
 pub fn orm_table_derive_f(table_name: Ident, mut table: DataStruct) -> TokenStream2{
     //let columns_types = get_tuple_from_table(&mut table, "column");
 
     let columns = columns_fn(&mut table);
     let columns_strings = columns_strings_fn(&mut table);
     let from_columns = from_columns_fn(&mut table, &table_name);
+    let from_sql = from_sql_impl(&table_name);
 
     quote! {
         #columns

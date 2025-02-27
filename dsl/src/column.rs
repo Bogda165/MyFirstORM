@@ -18,6 +18,8 @@ pub trait Column: Default + TheType + Into<RawTypes>{
     /// Type of the columns table
     type Table;
 
+    const FULL_NAME: &'static str;
+
     fn get_name() -> String;
 }
 
@@ -48,18 +50,17 @@ impl Queryable for RawColumn {
 
 mod column_tests {
     use crate::safe_expressions::SafeExpr;
-use crate::literals::Null;
-use crate::convertible::ConvertibleTo;
-use my_macros::table;
+    use crate::literals::Null;
+    use crate::convertible::ConvertibleTo;
+    use my_macros::table;
 
     #[table]
     struct some_table {
+        #[sql_type(Int)]
         #[column]
         #[null]
         UsersColumn: i32,
     }
-
-
 
     fn exclude_braces(mut query: String) -> String {
         query.replace("(", "").replace(")", "")

@@ -1,4 +1,3 @@
-use proc_macro::TokenStream;
 use std::str::EncodeUtf16;
 use proc_macro2::Ident;
 use quote::quote;

@@ -5,7 +5,7 @@ use syn::__private::TokenStream2;
 use syn::Meta;
 
 #[derive(Clone, Default)]
-pub(crate) struct MetaData <'a>{
+pub struct MetaData <'a>{
     pub attr_type: HashMap<&'a str, &'a str>,
 }
 impl<'a> MetaData<'a> {

@@ -7,13 +7,9 @@ use dsl::convertible::TheType;
 use dsl::{from, from_tables, query_from};
 use dsl::queryable::Queryable;
 use dsl::safe_expressions::{column, literal};
-use Db_shit::Entity;
-use p_macros::{repo, impl_table, attrs_to_comments, data_base};
+use p_macros::{repo, attrs_to_comments, data_base};
 use p_macros::table;
 use rusqlite::{params, Error, Params, Row};
-use rusqlite::ffi::{SQLITE_OPEN_CREATE, SQLITE_OPEN_READWRITE};
-use Db_shit::{Attributes, DbTypes};
-use Db_shit::NotNull;
 use orm_traits::attributes::*;
 
 use crate::address::*;
@@ -21,9 +17,6 @@ use crate::users::*;
 use p_macros::OrmTable;
 use orm_traits::{OrmColumn, OrmTable};
 use rusqlite::{Connection, OpenFlags};
-use rusqlite::ErrorCode::DatabaseBusy;
-use rusqlite::types::Type;
-use Db_shit::NotNull::VALUE;
 
 #[derive(Default)]
 #[table("users")]
@@ -122,11 +115,12 @@ struct DataBaseTest {
 
 }
 
+
 fn main() {
 
     let users = Users::from_columns((10, "name".to_string()));
 
-    let query = query_from!(users::Users).join::<address::Address>(literal(10).less(column(address::id))).select_test((column(users::id), column(address::id)));
+    let query = query_from!(users::Users).join::<address::Address>(literal(10).less(column(address::id))).select_test(((column(users::id), "hui"), (column(address::id), "hui2")));
 
     let _id = users::id;
     println!("Inset query {:?}",users.insert_query());
@@ -152,12 +146,11 @@ fn main() {
 
 
 
-    let select_q = query_from!(Address).select_test((column(address::id), column(address::_address)));
+    let select_q = query_from!(Address).select_test(((column(address::id), "hui2"), (column(address::_address), "hui3")));
 
     println!("{}", select_q.to_query());
 
     db_connection.query_get(&*select_q.to_query(), |row| {
         row.get::<usize, String>(1).unwrap()
-
     }).into_iter().for_each(|result| {println!("HUI{:?}", result)})
    }

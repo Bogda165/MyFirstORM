@@ -15,39 +15,50 @@ mod tables {
     use super::*;
     pub mod users {
 
-
-        use crate::table;
+        use rusqlite::types::FromSqlResult;
+        use rusqlite::types::ValueRef;
+        use my_macros::table;
 
         #[table]
         struct users {
             #[column]
+            #[sql_type(Int)]
             id: i32,
             #[column]
+            #[sql_type(Text)]
             name: String,
         }
     }
 
     pub mod address {
 
-        use crate::table;
+        use rusqlite::types::FromSqlResult;
+use rusqlite::types::ValueRef;
+use crate::table;
 
         #[table]
         struct address {
             #[column]
+            #[sql_type(Int)]
             id: i32,
             #[column]
+            #[sql_type(Text)]
             street: String,
         }
     }
 
     pub mod phone {
-        use super::*;
+        use rusqlite::types::FromSqlResult;
+use rusqlite::types::ValueRef;
+use super::*;
 
         #[table]
         struct phone {
             #[column]
+            #[sql_type(Int)]
             id: i32,
             #[column]
+            #[sql_type(Int)]
             number: i32,
         }
     }
@@ -61,7 +72,7 @@ use crate::query::the_query::Query;
 use crate::queryable::Queryable;
 
 #[test]
-fn test1() {
+fn main_test() {
     let query = query_from!(users::users, address::address)
         .join::<phone::phone>(
             literal(10).less(column(phone::id))
@@ -75,14 +86,14 @@ fn test1() {
         column(users::name)
             .like("%ll", Some(' '))
     ).select_test(
-        (column(users::name),
-         (column(phone::number),
-          column(address::street)))
+        ((column(users::name), "name"),
+         ((column(phone::number),"number"),
+          (column(address::street), "street")))
     );
 
 
 
-    println!("{}", query.to_query());
+    assert_eq!("{}", query.to_query());
 }
 
 fn main() {

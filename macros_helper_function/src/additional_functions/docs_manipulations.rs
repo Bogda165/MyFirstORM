@@ -1,7 +1,8 @@
+use proc_macro2::TokenTree;
 use quote::quote;
 use syn::{Attribute, Meta};
+use syn::__private::TokenStream2;
 use syn::Expr::{Lit};
-use proc_macro::{TokenStream, TokenTree};
 use syn::Lit::Str;
 use crate::additional_functions::attributes_manipulations::parse_string_to_attr;
 
@@ -12,7 +13,7 @@ pub fn from_attribute_to_comment(attr: Attribute) -> proc_macro2::TokenStream {
             "".to_string()
         }
         Meta::List(metaList) => {
-            let mut token_stream = TokenStream::from(metaList.tokens);
+            let mut token_stream = TokenStream2::from(metaList.tokens);
             format!("({})", token_stream.into_iter().map(|tree| {
                 match tree {
                     TokenTree::Group(_) => { unreachable!("write converting to a group") }

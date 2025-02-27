@@ -8,9 +8,20 @@ pub trait SafeExprTuple<Tables> {
 
 }
 
-impl<T: TheType, U> SafeExprTuple<U> for SafeExpr<T, U> {}
+impl<'a, T: TheType, U> SafeExprTuple<U> for (SafeExpr<T, U>, &'a str) {}
 
-impl<T: TheType, U, Tuple: SafeExprTuple<U>> SafeExprTuple<U> for (SafeExpr<T, U>, Tuple) {}
+impl<'a, T: TheType, U> AutoQueryable for (SafeExpr<T, U>, &'a str) {}
+
+impl<'a, T: TheType, U> Queryable for (SafeExpr<T, U>, &'a str)
+where
+    (SafeExpr<T, U>, &'a str): AutoQueryable
+{
+    fn convert_to_query(&self) -> Option<String> {
+        Some(format!("{} as {}", self.0.to_query(), self.1))
+    }
+}
+
+impl<T: TheType, U, Tuple: SafeExprTuple<U>> SafeExprTuple<U> for ((SafeExpr<T, U>, &str), Tuple) {}
 
 pub struct SafeExpr<ExprType: TheType, AllowedTables> {
     pub tables: PhantomData<AllowedTables>,

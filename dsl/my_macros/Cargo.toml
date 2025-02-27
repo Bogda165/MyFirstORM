@@ -7,6 +7,7 @@ edition = "2021"
 syn = "2.0.98"       # Parsing the Rust code
 quote = "1.0"     # Generating the code
 proc-macro2 = "1.0"  # Working with token streams
+macros_helper_function = {path = "../../macros_helper_function"}
 
 [lib]
 proc-macro = true  # This allows you to create a procedural macro

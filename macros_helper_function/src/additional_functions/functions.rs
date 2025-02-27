@@ -1,105 +1,11 @@
-use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{quote, ToTokens};
-use syn::{Attribute, Data, DeriveInput, Expr, Field, Meta};
+use syn::{Attribute, Data, DataStruct, DeriveInput, Expr, Field, Meta};
 use syn::__private::TokenStream2;
 use syn::Expr::Lit;
 use syn::Lit::Str;
-use crate::additional_functions::attributes_manipulations::is_in_allowed_attrs;
-use crate::{get_tuple_from_table, FroConnect};
-
-pub fn handle_field_table_struct(field: (&Ident, &Vec<Attribute>)) -> proc_macro2::TokenStream {
-    let name = field.0;
-    //check if connect logic
-    if field.1.len() == 0 {
-        return quote!{};
-    }
-    if field.1[0].meta.path().get_ident().unwrap().to_string() == "Connect" {
-
-        let mut connect_o = FroConnect::default();
-        field.1.iter().for_each(|attr| {
-            match attr.meta {
-                Meta::Path(_) => {
-                    std::panic!("Not expected attribute {}", attr.meta.path().get_ident().unwrap().to_string())
-                }
-                Meta::List(_) => {
-                    std::panic!("Not expected attribute {}", attr.meta.path().get_ident().unwrap().to_string())
-                }
-                Meta::NameValue(ref attr) => {
-                    match &*attr.path.get_ident().unwrap().to_string() {
-                        "path" => {
-                            if let Lit(expr_list) = &attr.value {
-                                if let Str(lit_str) = &expr_list.lit {
-                                    connect_o.path = lit_str.value()
-                                }
-                            }
-                        }
-                        "table_name" => {
-                            if let Lit(expr_list) = &attr.value {
-                                if let Str(lit_str) = &expr_list.lit {
-                                    connect_o.table_name = lit_str.value()
-                                }
-                            }
-                        }
-                        "field_name" => {
-                            if let Lit(expr_list) = &attr.value {
-                                if let Str(lit_str) = &expr_list.lit {
-                                    connect_o.field_name = lit_str.value()
-                                }
-                            }
-                        }
-                        _ => {
-                            std::panic!("Not expected attribute name")
-                        }
-                    }
-                }
-            }
-        });
-
-
-        /*
-        //find struct with name table_name, and get the type of field_name
-        //form quote
-        let mut field_type;
-        //find struct
-        match find_by_name(&*connect_o.path, connect_o.table_name.clone()) {
-            Ok(table) => {
-                assert_eq!(table.ident.to_string(), connect_o.table_name);
-                if let Fields::Named(fields) = table.fields {
-                    for field in fields.named {
-                        if field.ident.unwrap().to_string() == connect_o.field_name {
-                            field_type = field.ty;
-                        }
-                    }
-                }
-
-            }
-            Err(err) => {
-                panic!("Couldn't find strcut with name {}; error {:?}", connect_o.table_name, err);
-            }
-        };
-
-         */
-
-        //get Dbtype from file_type
-    }
-
-    let attrs = field.1.iter().map(|attr| {
-        match is_in_allowed_attrs(&attr.meta.path().get_ident().unwrap()) {
-            Ok(_attr) => {
-                _attr
-            }
-            Err(_) => {
-                std::panic!("Not allowed type or attr")
-            }
-        }
-    });
-
-    quote! {
-        pub #name: (#(#attrs),* ),
-    }
-}
-
+use syn::parse::Parser;
+use crate::additional_functions::docs_manipulations::from_attribute_to_comment;
 
 /// if the F func the None if the attribute wasn't find, and Some(index, TokenStream) if was
 pub fn iter_through_attrs<T: ToTokens, MatchF>(field: &mut Field, delete_attrs: bool, mut func: MatchF) -> Vec<T>
@@ -163,6 +69,8 @@ pub fn orm_table_derive_f(input: DeriveInput) -> TokenStream2 {
                 type ColumnsT = #tuple;
                 #inside_impl
             }
+
+
         }
     };
 
@@ -220,6 +128,40 @@ where
 }
 
 
-fn to_real_type() {
+pub fn get_tuple_from_table(mut table: DataStruct, _attrs_name: &str) -> TokenStream2{
+    let types = &mut table.fields.iter_mut().filter_map(|field| {
+        let _res = iter_through_attrs(field, false, |field, attr_name, _| {
+            if attr_name == _attrs_name  {
+                let field_name = field.clone().ident.unwrap();
+                Some(quote!{<#field_name as TheType>::Type})
+            }else {None}
+        });
 
+        if _res.len() == 0 {
+            None
+        }else {
+            Some(_res[0].clone())
+        }
+    });
+
+    quote!{
+        (#(#types), *)
+    }
+}
+
+pub fn attrs_to_comments_f(table: &mut DeriveInput){
+    let new_fields = match &mut table.data {
+        Data::Struct(_table) => {
+            _table.fields.iter_mut().for_each(|field| {
+                field.attrs.iter_mut().for_each(|attr| {
+                    let new_attr = from_attribute_to_comment(attr.clone());
+                    let parser = Attribute::parse_outer;
+                    let new_attr_attr = parser.parse2(new_attr).unwrap_or_else(|_| vec![]);
+                    *attr = new_attr_attr[0].clone()
+                });
+            })
+        }
+        Data::Enum(_) => {unreachable!()}
+        Data::Union(_) => {unreachable!()}
+    };
 }
