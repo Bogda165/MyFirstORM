@@ -278,6 +278,7 @@ pub mod from {
 pub mod select {
     use crate::queryable::{AutoQueryable, Queryable};
     use crate::expressions::Expression;
+    use crate::type_check;
 
     #[derive(Default)]
     pub struct Select {
@@ -310,6 +311,18 @@ pub mod select {
     }
 
     #[macro_export]
+    macro_rules! select{
+        ($($input:tt)*) => {
+            {
+
+                let result = some_select!($($input)*);;
+                type_check!($($input)*);
+                result
+            }
+        }
+    }
+
+    #[macro_export]
     macro_rules! some_select {
         () => {};
         ($ident:ty as $str:literal, $($rest:tt)*) => {
@@ -325,6 +338,117 @@ pub mod select {
             (SafeExpr::<$ident, _>::column(), <$ident as Column>::FULL_NAME)
         };
     }
+}
+
+pub mod comp_time_names_check {
+    use crate::column::Column;
+    use crate::compare_macro;
+
+    pub const fn get_constant<T: Column>() -> &'static str {
+        T::FULL_NAME
+    }
+
+    pub const fn my_trait_check<Obj: Column>() {}
+    pub const fn compare(str1: &'static str, str2: &'static str) -> bool {
+        if str1.len() != str2.len() {
+            return false;
+        }
+
+        let mut i = 0;
+
+        while i < str1.len() {
+            if str1.as_bytes()[i] != str2.as_bytes()[i] {
+                return false;
+            }
+            i += 1;
+        }
+
+        true
+    }
+
+    #[macro_export]
+    macro_rules! get_str {
+        ($val:literal) => {
+            $val
+        };
+
+        ($val:ty) => {
+            {
+                my_trait_check::<$val>();
+                get_constant::<$val>()
+            }
+        }
+    }
+
+    #[macro_export]
+    macro_rules! compare_with_string {
+        ($compare_string:literal, $_type:ty as $second_string:literal, $($rest:tt)*) => {
+            if (compare($compare_string, $second_string)) {panic!("Equal names detected")}
+            compare_with_string!($compare_string, $($rest)*)
+        };
+
+        ($compare_string:literal, $second_string:ty, $($rest:tt)*) => {
+            if (compare($compare_string, get_str!($second_string))) {panic!("Equal names detected")}
+            compare_with_string!($compare_string, $($rest)*)
+        };
+
+        ($_type:ty, $second_string:ty, $($rest:tt)*) => {
+            if compare(get_constant::<$_type>(), get_str!($second_string)) {panic!("Equal names detected")}
+            compare_with_string!($_type, $($rest)* )
+        };
+
+        ($_type:ty, $second_type:ty as $second_string:literal, $($rest:tt)*) => {
+            if (compare(get_constant::<$_type>(), $second_string)) {panic!("Equal names detected")}
+            compare_with_string!($_type, $($rest)* )
+        };
+
+        ($_type:ty, $second_type:ty as $end:literal) => {
+            if (compare(get_constant::<$_type>(), $end)) {panic!("Equal names detected")}
+        };
+
+        ($_type:ty, $end:ty) => {
+            if (compare(get_constant::<$_type>(), get_str!($end))) {panic!("Equal names detected")}
+        };
+
+        ($string:literal, $_type:ty as $end:literal) => {
+            if (compare($string, $end)) {panic!("Equal names detected")}
+        };
+
+        ($string:literal, $end:ty) => {
+            if (compare($string, get_str!($end))) {panic!("Equal names detected")}
+        };
+    }
+
+    #[macro_export]
+    macro_rules! compare_macro {
+        ($end:ty) => {
+
+        };
+
+        ($end_t:ty as $end:literal) => {
+
+        };
+
+        ($_type:ty, $($rest:tt)*) => {
+            compare_with_string!($_type, $($rest)*);
+            compare_macro!($($rest)*);
+        };
+
+        ($_type:ty as $current_string:literal, $($rest:tt)*) => {
+            compare_with_string!($current_string, $($rest)*);
+            compare_macro!($($rest)*);
+        }
+    }
+
+    #[macro_export]
+    macro_rules! type_check {
+        ($($input:tt)*) => {
+            const _: () = {
+                compare_macro!($($input)*);
+            };
+        }
+    }
+
 }
 
 pub mod join {
@@ -351,6 +475,14 @@ pub mod join {
 
 mod tests {
     use my_macros::{from, table};
+    use super::comp_time_names_check;
+    use crate::type_check;
+    use crate::compare_macro;
+    use crate::compare_with_string;
+    use crate::get_str;
+    use crate::query::comp_time_names_check::get_constant;
+    use crate::query::comp_time_names_check::my_trait_check;
+    use crate::query::comp_time_names_check::compare;
     use crate::queryable::Queryable;
     use crate::safe_expressions::{literal, SafeExpr};
     use crate::column::Allowed;
@@ -358,7 +490,7 @@ mod tests {
     use crate::column::Column;
     use crate::convertible::TheType;
     use crate::expressions::raw_types::RawTypes;
-    use crate::{column, query_from, some_select};
+    use crate::{column, query_from, select, some_select};
     use crate::query::the_query::{Query, Where};
     use crate::column::RawColumn;
 
@@ -520,6 +652,7 @@ use super::*;
         println!("{}", query);
     }
 
+
     #[test]
     fn select_macro_test() {
         let query = query_from!(users::users, address::address)
@@ -535,7 +668,7 @@ use super::*;
             ((column(users::name), "name"),
              ((column(phone::number),"number"),
               (column(address::street), "street")))
-        ).select_test(some_select!(users::name as "name", phone::number as "numbers", address::street));
+        ).select_test(select!(users::name as "name", phone::number as "street_address", address::street));
 
         println!("{}", query.to_query());
         assert_eq!(0, 1);
