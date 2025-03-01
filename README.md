@@ -1,6 +1,6 @@
 # Rust ORM for Sqlite
 
-This project is my own implementation of ORM in rust.
+I recreated an orm in rust from scratch, because no one is hiring jnr rust devs ;(
 
 ## Project description
 
