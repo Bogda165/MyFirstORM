@@ -119,7 +119,7 @@ pub mod the_query {
 
     impl <Tables> Queryable for Query<Tables> {
         fn convert_to_query(&self) -> Option<String> {
-            Some(format!{"{select_c}{from_c}{where_c}{join_c};",
+            Some(format!{"{select_c}{from_c}{join_c}{where_c};",
                          where_c = self.where_clause.to_query(),
 
                          join_c = self.joins.iter()
@@ -157,8 +157,18 @@ pub mod the_query {
             }
         }
 
-        pub fn join<T: Table>(mut self, expr: SafeExpr<Bool, (T, (AllowedTables))>) -> Query<(T, (AllowedTables))> {
-            let mut query = self.add_table::<T>();
+        pub fn join<T: Table>(self, expr: SafeExpr<Bool, (T, (AllowedTables))>) -> Query<(T, (AllowedTables))> {
+            let mut query = Query {
+                from_clause: self.from_clause.type_change::<T>(),
+                where_clause: self.where_clause.expr.change_tables::<(T, (AllowedTables))>().into(),
+                joins: self.joins.into_iter().map(|old_join| {
+                    Join {
+                        expr: old_join.expr.change_tables(),
+                        table: old_join.table,
+                    }
+                }).collect::<Vec<Join<(T, (AllowedTables))>>>(),
+                select: self.select,
+            };
 
             query.joins.push(Join {table: T::get_name(), expr});
 
@@ -218,6 +228,13 @@ pub mod from {
                                                Some(val) => { format!("{}, ", val) }
                                            }
                                            , &*T::get_name())),
+            }
+        }
+
+        pub fn type_change<T: Table>(self) -> FromTables<(T, AllowedTables)> {
+            FromTables {
+                tables: PhantomData::<(T, AllowedTables)>,
+                tables_query: self.tables_query,
             }
         }
     }
