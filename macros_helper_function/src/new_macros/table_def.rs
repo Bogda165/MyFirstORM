@@ -93,7 +93,7 @@ pub fn impl_table((table, table_name): (&mut DataStruct, &Ident), delete_attrs: 
                                             impl Column for #field_name {
                                                 type Table = #table_name;
 
-                                                const FULL_NAME: &'static str = concat!("{}_{}", #field_name_string, #table_name_string);
+                                                const FULL_NAME: &'static str = concat!(#field_name_string, "_", #table_name_string);
 
                                                 fn get_name() -> String {
                                                     #field_name_string.to_string()

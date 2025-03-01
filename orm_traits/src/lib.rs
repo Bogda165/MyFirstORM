@@ -3,6 +3,7 @@ use dsl::column::{Column, RawColumn, Table};
 use dsl::convertible::TheType;
 use dsl::expressions::Expression::Raw;
 use dsl::expressions::raw_types::RawTypes;
+use rusqlite::types::FromSql;
 use crate::join::Join;
 
 pub mod join {
@@ -63,7 +64,7 @@ impl<T: Column> From<T> for OrmColumn {
 }
 
 /// You must not implement this trait explicitly
-pub trait OrmTable: Table + Default
+pub trait OrmTable: Table + Default + FromSql
 {
     type ColumnsT;
     fn columns(self) -> Self::ColumnsT;
@@ -298,6 +299,7 @@ pub mod attributes {
 
 }
 
+
 mod tests {
     struct WrapInt {
         val: i32,
@@ -315,6 +317,7 @@ mod tests {
         }
     }
 
+    use rusqlite::types::{FromSqlResult, ValueRef};
     use super::*;
     pub struct Users {
         name: String,
@@ -335,6 +338,7 @@ mod tests {
 
         impl Column for name {
             type Table = Users;
+            const FULL_NAME: &'static str = "";
 
             fn get_name() -> String {
                 "name".to_string()
@@ -365,6 +369,7 @@ mod tests {
 
         impl Column for id {
             type Table = Users;
+            const FULL_NAME: &'static str = "";
 
             fn get_name() -> String {
                 "id".to_string()
@@ -387,6 +392,12 @@ mod tests {
                 name: "some_name".into(),
                 id: (-1).into(),
             }
+        }
+    }
+
+    impl FromSql for Users {
+        fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+            todo!()
         }
     }
 

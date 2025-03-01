@@ -93,7 +93,7 @@ fn main_test() {
 
 
 
-    assert_eq!("{}", query.to_query());
+    println!("{}", query.to_query());
 }
 
 fn main() {

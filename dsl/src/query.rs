@@ -295,11 +295,17 @@ pub mod select {
     #[macro_export]
     macro_rules! some_select {
         () => {};
-        ($ident:ty as $str:literal, $($rest:tt)*) => {};
-        ($ident:ty, $($rest:tt)*) => {};
-        ($ident:ty as $str:literal) => {};
+        ($ident:ty as $str:literal, $($rest:tt)*) => {
+            ((SafeExpr::<$ident, _>::column(), $str), some_select!($($rest)*))
+        };
+        ($ident:ty, $($rest:tt)*) => {
+            ((SafeExpr::<$ident, _>::column(), <$ident as Column>::FULL_NAME) , some_select!($($rest)*))
+        };
+        ($ident:ty as $str:literal) => {
+            (SafeExpr::<$ident, _>::column(), $str)
+        };
         ($ident:ty) => {
-            (ty, )
+            (SafeExpr::<$ident, _>::column(), <$ident as Column>::FULL_NAME)
         };
     }
 }
@@ -329,22 +335,22 @@ pub mod join {
 mod tests {
     use my_macros::{from, table};
     use crate::queryable::Queryable;
-    use crate::safe_expressions::SafeExpr;
+    use crate::safe_expressions::{literal, SafeExpr};
     use crate::column::Allowed;
     use crate::column::Table;
     use crate::column::Column;
     use crate::convertible::TheType;
     use crate::expressions::raw_types::RawTypes;
-    use crate::{column, query_from};
+    use crate::{column, query_from, some_select};
     use crate::query::the_query::{Query, Where};
     use crate::column::RawColumn;
 
     mod tables {
         use super::*;
         pub mod table1 {
-            use rusqlite::types::FromSqlResult;
-use rusqlite::types::ValueRef;
-use super::*;
+        use rusqlite::types::FromSqlResult;
+        use rusqlite::types::ValueRef;
+        use super::*;
 
             #[table]
             struct table1 {
@@ -393,6 +399,7 @@ use super::*;
     }
 
     use tables::*;
+    use crate::tables::{address, phone, users};
 
     #[test]
     fn where_test() {
@@ -494,6 +501,27 @@ use super::*;
             .to_query();
 
         println!("{}", query);
+    }
+
+    #[test]
+    fn select_macro_test() {
+        let query = query_from!(users::users, address::address)
+            .join::<phone::phone>(
+                literal(10).less(column(phone::id))
+                    .and(
+                        column(phone::number)
+                            .cast::<i32>()
+                            .div(literal(1000))
+                            .equal(literal(9898))
+                    )
+            ).select_test(
+            ((column(users::name), "name"),
+             ((column(phone::number),"number"),
+              (column(address::street), "street")))
+        ).select_test(some_select!(users::name as "name", phone::number as "numbers", address::street));
+
+        println!("{}", query.to_query());
+        assert_eq!(0, 1);
     }
 
 }
