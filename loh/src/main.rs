@@ -9,196 +9,20 @@ use std::os::macos::raw::stat;
 use rusqlite::{Connection, OpenFlags, Row, Statement, ToSql};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef};
 use rusqlite::types::Value::Null;
-use crate::DbTypes::*;
 
 trait INSERTABLE {
     fn for_insert(&self) -> String;
 }
 
-#[derive(Debug, Clone)]
-pub enum HUI<T> {
-    NULL,
-    VALUE(T)
-}
-
-impl<T> ToSql for HUI<T>
-where T: ToSql
-{
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        match self {
-            HUI::NULL => {Null.to_sql()}
-            HUI::VALUE(val) => {
-                val.to_sql()
-            }
-        }
-    }
-}
-
-impl FromSql for HUI<i32> {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        match value {
-            ValueRef::Null => {
-                Ok(HUI::NULL)
-            }
-            ValueRef::Integer(val) => {
-                //TODO fix to i64 uoy
-                Ok(HUI::VALUE(val as i32))
-            }
-            _ => Err(FromSqlError::InvalidType)
-        }
-    }
-}
-
-impl FromSql for HUI<f32> {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        match value {
-            ValueRef::Null => {
-                Ok(HUI::NULL)
-            }
-            ValueRef::Real(val) => {
-                Ok(HUI::VALUE(val as f32))
-            }
-            _ => Err(FromSqlError::InvalidType)
-        }
-    }
-}
-
-impl FromSql for HUI<String> {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        match value {
-            ValueRef::Null => {
-                Ok(HUI::NULL)
-            }
-            ValueRef::Text(val) => {
-                Ok(HUI::VALUE(std::str::from_utf8(val).unwrap().to_string()))
-            }
-            _ => Err(FromSqlError::InvalidType)
-        }
-    }
-}
-
-
-#[derive(Debug)]
-pub enum DbTypes {
-    INTEGER_N(HUI<i32>),
-    FLOAT_N(HUI<f32>),
-    TEXT_N(HUI<String>),
-    INTEGER(i32),
-    FLOAT(f32),
-    TEXT(String),
-}
-
-impl DbTypes {
-    pub fn to_string(&self) -> String {
-        match &self {
-            INTEGER(_) => {
-                "INTEGER".to_string()
-            }
-            FLOAT(_) => {
-                "REAL".to_string()
-            }
-            TEXT(_) => {
-                "TEXT".to_string()
-            }
-            INTEGER_N(_) => {
-                "INTEGER".to_string()
-            }
-            FLOAT_N(_) => {
-                "REAL".to_string()
-            }
-            TEXT_N(_) => {
-                "TEXT".to_string()
-            }
-
-            _ => {
-                unreachable!("I hae not any others types")
-            }
-        }
-    }
-
-    pub fn get_val(&self) -> String {
-        let _str = format!("{:?}", self);
-        let slice = _str.find("(").unwrap() + 1;
-        let slice_2 = _str.len() - 1;
-        _str[slice..slice_2].to_string()
-    }
-}
-
-impl INSERTABLE for DbTypes {
-    fn for_insert(&self) -> String {
-        match self {
-            INTEGER(val) => {
-                val.to_string()
-            }
-            FLOAT(val) => {
-                val.to_string()
-            }
-            TEXT(str) => {
-                str.clone()
-            }
-            INTEGER_N(val) => {
-                match val {
-                    HUI::NULL => {"NULL".to_string()}
-                    HUI::VALUE(val) => {val.to_string()}
-                }
-            }
-            FLOAT_N(val) => {
-                match val {
-                    HUI::NULL => {"NULL".to_string()}
-                    HUI::VALUE(val) => {val.to_string()}
-                }
-            }
-            TEXT_N(val) => {
-                match val {
-                    HUI::NULL => {"NULL".to_string()}
-                    HUI::VALUE(val) => {val.clone()}
-                }
-            }
-        }
-    }
-}
-
-
-impl ToSql for DbTypes {
-    fn to_sql(&self) -> Result<ToSqlOutput<'_>, rusqlite::Error> {
-        match self {
-            DbTypes::INTEGER(i) => {Ok(ToSqlOutput::from(*i))},
-            DbTypes::FLOAT(f) => Ok(ToSqlOutput::from(*f)),
-            DbTypes::TEXT(s) => Ok(ToSqlOutput::from(s.clone())),
-            INTEGER_N(i) => {i.to_sql()},
-            FLOAT_N(f) => {f.to_sql()},
-            TEXT_N(t) => {t.to_sql()},
-        }
-    }
-}
-
-impl FromSql for DbTypes {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        match value {
-            ValueRef::Null => {
-                Err(FromSqlError::InvalidType)
-            }
-            ValueRef::Integer(val) => {
-                Ok(INTEGER(val as i32))
-            }
-            ValueRef::Real(val) => {
-                Ok(FLOAT(val as f32))
-            }
-            ValueRef::Text(val) => {
-                Ok(TEXT(std::str::from_utf8(val).unwrap().to_string()))
-            }
-            ValueRef::Blob(_) => { unreachable!("Fuck it") }
-        }
-    }
-}
 
 
 mod many_to_many {
     use std::any::Any;
     use std::collections::HashMap;
     use rusqlite::{Connection, OpenFlags, Row};
+    use rusqlite::ffi::sqlite3_value;
+    use rusqlite::types::Value;
     use crate::code::{load, ConnectionTable, DbResponseConv, EntityQuery2, LoadType, TableName};
-    use crate::DbTypes;
 
     #[derive(Debug, Default, Clone)]
     struct Author {
@@ -245,10 +69,10 @@ mod many_to_many {
             self
         }
 
-        fn get_by_name(&self, name: &String) -> DbTypes {
+        fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "author_id" => DbTypes::INTEGER(self.author_id),
-                "name" => DbTypes::TEXT(self.name.clone()),
+                "author_id" => Value::Integer(self.author_id as i64),
+                "name" => Value::Text(self.name.clone()),
                 _ => { unreachable!("you") }
             }
         }
@@ -277,10 +101,10 @@ mod many_to_many {
 
 
     impl DbResponseConv for Book {
-        fn get_by_name(&self, name: &String) -> DbTypes {
+        fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "book_id" => DbTypes::INTEGER(self.book_id),
-                "title" => DbTypes::TEXT(self.title.clone()),
+                "book_id" => Value::Integer(self.book_id as i64),
+                "title" => Value::Text(self.title.clone()),
                 _ => { unreachable!("you") }
             }
         }
@@ -372,9 +196,8 @@ mod one_to_many {
     use std::any::Any;
     use std::collections::HashMap;
     use rusqlite::{Connection, OpenFlags, Row};
+    use rusqlite::types::Value;
     use crate::code::{load, ConnectionTable, DbResponseConv, EntityQuery2, LoadType, TableName};
-    use crate::DbTypes;
-    use crate::DbTypes::{INTEGER, TEXT};
 
     #[derive(Debug, Default, Clone)]
     struct User {
@@ -411,10 +234,10 @@ mod one_to_many {
             self
         }
 
-        fn get_by_name(&self, name: &String) -> DbTypes {
+        fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "user_id" => INTEGER(self.user_id),
-                "name" => TEXT(self.name.clone()),
+                "user_id" => Value::Integer(self.user_id as i64),
+                "name" => Value::Text(self.name.clone()),
                 _ => {
                     unreachable!()
                 }
@@ -473,11 +296,11 @@ mod one_to_many {
             self
         }
 
-        fn get_by_name(&self, name: &String) -> DbTypes {
+        fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "user_id" => INTEGER(self.user_id),
-                "content" => TEXT(self.content.clone()),
-                "post_id" => INTEGER(self.post_id),
+                "user_id" => Value::Integer(self.user_id as i64),
+                "content" => Value::Text(self.content.clone()),
+                "post_id" => Value::Integer(self.post_id as i64),
                 _ => {
                     unreachable!()
                 }
@@ -496,7 +319,7 @@ mod one_to_many {
     #[test]
     fn test1() {
         let conn = Connection::open_with_flags(
-            "../../resourses/test_db2.sqlite",
+            "../resourses/test_db2.sqlite",
             OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
         ).unwrap();
 
@@ -536,9 +359,8 @@ mod hard_test {
     use std::ops::Deref;
     use rusqlite::{Connection, OpenFlags, Row};
     use rusqlite::ffi::sqlite3_busy_timeout;
+    use rusqlite::types::Value;
     use crate::code::{load, ConnectionTable, DbResponseConv, EntityQuery2, LoadType, TableName};
-    use crate::DbTypes;
-    use crate::DbTypes::{INTEGER, TEXT};
 
     #[derive(Clone, Debug, Default)]
     struct Profile {
@@ -574,12 +396,12 @@ mod hard_test {
             self
         }
 
-        fn get_by_name(&self, name: &String) -> DbTypes {
+        fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "profile_id" => INTEGER(self.profile_id),
-                "student_id" => INTEGER(self.student_id),
-                "address" => TEXT(self.address.clone()),
-                "phone" => TEXT(self.phone.clone()),
+                "profile_id" => Value::Integer(self.profile_id as i64),
+                "student_id" => Value::Integer(self.student_id as i64),
+                "address" => Value::Text(self.address.clone()),
+                "phone" => Value::Text(self.phone.clone()),
                 _ => {
                     unreachable!()
                 }
@@ -642,11 +464,11 @@ mod hard_test {
             self
         }
 
-        fn get_by_name(&self, name: &String) -> DbTypes {
+        fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "course_id" => {INTEGER(self.course_id)}
-                "name" => TEXT(self.name.clone()),
-                "credit" => INTEGER(self.credit),
+                "course_id" => {Value::Integer(self.course_id as i64)}
+                "name" => Value::Text(self.name.clone()),
+                "credit" => Value::Integer(self.credit as i64),
                 _ => {unreachable!()}
             }
         }
@@ -731,11 +553,11 @@ mod hard_test {
             self
         }
 
-        fn get_by_name(&self, name: String) -> DbTypes {
+        fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "student_id" => {INTEGER(self.student_id)}
-                "name" => TEXT(self.name.clone()),
-                "age" => INTEGER(self.age),
+                "student_id" => {Value::Integer(self.student_id as i64)}
+                "name" => Value::Text(self.name.clone()),
+                "age" => Value::Integer(self.age as i64),
                 _ => {unreachable!()}
             }
         }
@@ -812,10 +634,10 @@ mod hard_test {
             self
         }
 
-        fn get_by_name(&self, name: String) -> DbTypes {
+        fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "department_id" => INTEGER(self.department_id),
-                "name" => TEXT(self.name.clone()),
+                "department_id" => Value::Integer(self.department_id as i64),
+                "name" => Value::Text(self.name.clone()),
                 _ => {
                     unreachable!()
                 }
@@ -838,7 +660,7 @@ mod hard_test {
     #[test]
     fn hard_test () {
         let conn = Connection::open_with_flags(
-            "../../resourses/test_db2.sqlite",
+            "../resourses/test_db2.sqlite",
             OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
         ).unwrap();
 

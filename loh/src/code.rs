@@ -1,7 +1,11 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::fmt::Debug;
+use std::marker::PhantomData;
 use rusqlite::{Row, Statement};
-use crate::{DbTypes, INSERTABLE};
+use rusqlite::types::{FromSql, Value};
+use crate::{INSERTABLE};
+use std::fmt;
 
 #[derive(Debug)]
 pub struct ConnectionTable {
@@ -25,6 +29,14 @@ impl ConnectionTable {
 pub struct TableName {
     pub(crate) name: String
 }
+
+trait TheType: FromSql + Debug {
+
+}
+
+impl TheType for i32 {}
+impl TheType for String {}
+
 
 
 #[derive(Debug)]
@@ -54,15 +66,13 @@ impl EntityQuery2<'_> {
                         Some(|row: &Row| {
                             connection_table.table
                                 .entry(
-                                    row.get::<&str, DbTypes>(connection_table.upper_id.as_str())
-                                    .unwrap()
-                                    .for_insert()
+                                    format!("{:?}", row.get_ref::<&str>(connection_table.upper_id.as_str())
+                                    .unwrap())
                                 )
                                 .or_insert(vec![])
                                 .push(
-                                    row.get::<&str, DbTypes>(connection_table.base_id.as_str())
-                                    .unwrap()
-                                    .for_insert()
+                                    format!("{:?}", row.get_ref::<&str>(connection_table.base_id.as_str())
+                                    .unwrap())
                                 )
                         })
                     }
@@ -157,7 +167,7 @@ pub trait DbResponseConv: std::fmt::Debug + Any {
 
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
 
-    fn get_by_name(&self, name: &String) -> DbTypes;
+    fn get_by_name(&self, name: &String) -> Value;
 
     fn add(&mut self, table_name: TableName, vector: Vec<&Box<dyn DbResponseConv>>);
 
@@ -201,12 +211,12 @@ pub fn load(mut collection: &mut Option<Vec<Box<dyn DbResponseConv>>>, table_nam
                     match connection_table {
                         Some(mut connection_table) => {
                             collection.iter_mut().for_each(|obj| {
-                                let connected_with = obj.get_by_name(&connection_table.upper_id).get_val();
+                                let connected_with = format!("{:?}", obj.get_by_name(&connection_table.upper_id));
 
                                 if let Some(_vec) = connection_table.table.remove(&connected_with) {
                                     let clean_vec = table.iter().filter(|obj| {
                                         return _vec.iter().find(|val| {
-                                            obj.get_by_name(&connection_table.base_id).for_insert() == **val
+                                            format!("{:?}", obj.get_by_name(&connection_table.base_id)) == **val
                                         }).is_some()
                                     }).collect();
 
