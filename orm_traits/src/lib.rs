@@ -3,8 +3,11 @@ use dsl::column::{Column, RawColumn, Table};
 use dsl::convertible::TheType;
 use dsl::expressions::raw_types::RawTypes;
 use dsl::expressions::Expression::Raw;
-use rusqlite::types::FromSql;
+use rusqlite::types::{FromSql, Value};
 use std::any::Any;
+use std::fmt::Debug;
+use rusqlite::{params, DatabaseName, Params, ToSql};
+use crate::db::OrmDataBase;
 
 pub mod join {
     pub trait Join
@@ -61,6 +64,28 @@ impl<T: Column> From<T> for OrmColumn {
     }
 }
 
+#[derive(Debug, Clone)]
+struct InsertQuerySignature {
+    main_query: String,
+    values_template: String,
+    values_amount: usize,
+}
+
+
+impl InsertQuerySignature {
+    
+    fn new(main_query: String, values_template: String) -> Self {
+        Self {
+            main_query,
+            values_template,
+            values_amount: 1,
+        }
+    }
+    fn generate_query(self) -> String {
+        format!("{} VALUES ({});", self.main_query, self.values_template.repeat(self.values_amount))
+    }
+}
+
 /// You must not implement this trait explicitly
 pub trait OrmTable: Table + Default + FromSql {
     type ColumnsT;
@@ -76,23 +101,47 @@ pub trait OrmTable: Table + Default + FromSql {
         )
     }
 
-    fn insert_query(self) -> (String, Self::ColumnsT)
+    fn create<DataBase: OrmDataBase>(db: &DataBase) {
+        let query = Self::create_query();
+
+        db.query_post(&*query, params![]).unwrap()
+    }
+
+    fn insert_query() -> InsertQuerySignature
     where
         Self: Sized,
     {
         let query = format!(
-            "INSERT INTO {0} ({1}) VALUES ({2});",
+            "INSERT INTO {0} ({1})",
             Self::get_name(),
             Self::columns_strings()
                 .into_iter()
                 .map(|column| { column.name })
-                .join_iter(", "),
-            Self::columns_strings()
-                .iter()
-                .map(|_| { "?".to_string() })
-                .join_iter(", "),
-        );
-        (query, self.columns())
+                .join_iter(", "));
+        let values = Self::columns_strings()
+            .iter()
+            .map(|_| { "?".to_string() })
+            .join_iter(", ");
+        InsertQuerySignature::new(query, values)
+    }
+
+    fn insert<DataBase: db::QueryableMarker>(self, db: &DataBase) where <Self as OrmTable>::ColumnsT: Params, <Self as OrmTable>::ColumnsT: Debug {
+        let mut insert_query = Self::insert_query();
+        insert_query.values_amount = 1;
+        let columns = self.columns();
+
+        db.query_post(&*insert_query.generate_query(), columns).unwrap();
+    }
+
+    ///Create a transaction inside itself
+    fn insert_iterator<I: Iterator<Item = Self>, DataBase: db::OrmDataBase>(iterator: I, db: &mut DataBase) where <Self as OrmTable>::ColumnsT: Params, <Self as OrmTable>::ColumnsT: Debug {
+        let tx = db.get_transaction().unwrap();
+
+        iterator.for_each(|obj|{
+            obj.insert(&tx);
+        });
+
+        tx.commit().unwrap();
     }
 
     fn from_columns(columns: Self::ColumnsT) -> Self
@@ -103,83 +152,139 @@ pub trait OrmTable: Table + Default + FromSql {
     }
 }
 
-pub mod repo {
-    use super::*;
-    use rusqlite::{Connection, Error, OpenFlags, Params};
-    pub trait OrmRepo<T: OrmTable>
-    where
-        Self: Default,
-    {
-        fn from_connection(connection: Connection) -> Self;
-        fn connect() -> Self
-        where
-            Self: Sized,
-        {
-            Self::from_connection(
-                Connection::open_with_flags(
-                    T::get_name(),
-                    OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
-                )
-                .unwrap(),
-            )
-        }
-
-        fn get_connection(&self) -> &Option<Connection>;
-        fn create(&self) -> Result<(), Error> {
-            match self.get_connection() {
-                None => Err(Error::InvalidQuery),
-                Some(ref connection) => {
-                    let mut statement = match connection.prepare(&*T::create_query()) {
-                        Ok(stmt) => stmt,
-                        Err(error) => return Err(error),
-                    };
-                    if let Err(error) = statement.execute([]) {
-                        return Err(error);
-                    }
-                    Ok(())
-                }
-            }
-        }
-        fn insert(&self, entity: T)
-        where
-            <T as OrmTable>::ColumnsT: Params,
-        {
-            let (q, v) = entity.insert_query();
-            match self.get_connection() {
-                None => {
-                    panic!("table was not connected")
-                }
-                Some(connection) => {
-                    let mut statement = connection.prepare(&*q).unwrap();
-                    statement.execute(v).unwrap();
-                }
-            }
-        }
-
-        // pub fn load(&mut self) {
-        //     let q = address::address::load("");
-        //     let mut statement = self.db_connection.prepare(&*q).unwrap();
-        //     statement
-        //         .query_map(
-        //             [],
-        //             |row: &Row| {
-        //                 let a_s = address::address::from_row(row);
-        //                 self.entities.push(address::Address::from_shadow_table(a_s));
-        //                 Ok(())
-        //             },
-        //         )
-        //         .unwrap()
-        //         .for_each(drop);
-        // }
-    }
-}
+// pub mod repo {
+//     use super::*;
+//     use rusqlite::{Connection, Error, OpenFlags, Params};
+//     pub trait OrmRepo<T: OrmTable>
+//     where
+//         Self: Default,
+//     {
+//         fn from_connection(connection: Connection) -> Self;
+//         fn connect() -> Self
+//         where
+//             Self: Sized,
+//         {
+//             Self::from_connection(
+//                 Connection::open_with_flags(
+//                     T::get_name(),
+//                     OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
+//                 )
+//                 .unwrap(),
+//             )
+//         }
+//
+//         fn get_connection(&self) -> &Option<Connection>;
+//         fn create(&self) -> Result<(), Error> {
+//             match self.get_connection() {
+//                 None => Err(Error::InvalidQuery),
+//                 Some(ref connection) => {
+//                     let mut statement = match connection.prepare(&*T::create_query()) {
+//                         Ok(stmt) => stmt,
+//                         Err(error) => return Err(error),
+//                     };
+//                     if let Err(error) = statement.execute([]) {
+//                         return Err(error);
+//                     }
+//                     Ok(())
+//                 }
+//             }
+//         }
+//         fn insert(&self, entity: T)
+//         where
+//             <T as OrmTable>::ColumnsT: Params,
+//         {
+//             let (q, v) = entity.insert_query();
+//             match self.get_connection() {
+//                 None => {
+//                     panic!("table was not connected")
+//                 }
+//                 Some(connection) => {
+//                     let mut statement = connection.prepare(&*q).unwrap();
+//                     statement.execute(v).unwrap();
+//                 }
+//             }
+//         }
+//
+//         // pub fn load(&mut self) {
+//         //     let q = address::address::load("");
+//         //     let mut statement = self.db_connection.prepare(&*q).unwrap();
+//         //     statement
+//         //         .query_map(
+//         //             [],
+//         //             |row: &Row| {
+//         //                 let a_s = address::address::from_row(row);
+//         //                 self.entities.push(address::Address::from_shadow_table(a_s));
+//         //                 Ok(())
+//         //             },
+//         //         )
+//         //         .unwrap()
+//         //         .for_each(drop);
+//         // }
+//     }
+// }
 
 pub mod db {
     use dsl::convertible::Conversation;
     use dsl::query::the_query::Query;
     use rusqlite::ffi::Error;
-    use rusqlite::{Connection, ErrorCode, OpenFlags, Row, Rows, Statement};
+    use rusqlite::{Connection, ErrorCode, OpenFlags, Params, Row, Rows, Statement, Transaction};
     use std::os::macos::raw::stat;
+    use crate::OrmTable;
+
+    pub trait QueryableMarker {
+        fn query_get<F, T>(&self, query: &str, clos: F) -> Result<Vec<T>, rusqlite::Error>
+        where
+            F: FnMut(&Row) -> T;
+
+        fn query_post<QParams: rusqlite::Params>(
+            &self,
+            query: &str,
+            params: QParams,
+        ) -> Result<(), rusqlite::Error>;
+
+    }
+
+    impl<DB: OrmDataBase> QueryableMarker for DB {
+        fn query_get<F, T>(&self, query: &str, clos: F) -> Result<Vec<T>, rusqlite::Error>
+        where
+            F: FnMut(&Row) -> T
+        {
+            self.query_get(query, clos)
+        }
+
+        fn query_post<QParams: Params>(&self, query: &str, params: QParams) -> Result<(), rusqlite::Error> {
+            self.query_post(query, params)
+        }
+
+    }
+
+    impl QueryableMarker for Transaction<'_> {
+        fn query_get<F, T>(&self, query: &str, mut clos: F) -> Result<Vec<T>, rusqlite::Error>
+        where
+            F: FnMut(&Row) -> T
+        {
+            let mut statement = self.prepare(query)?;
+            let mut rows = statement.query([])?;
+            let mut clos_result = vec![];
+
+            while let Ok(row) = rows.next() {
+                match row {
+                    None => break,
+                    Some(row) => {
+                        clos_result.push(clos(row));
+                    }
+                }
+            }
+
+            Ok(clos_result)
+        }
+
+        fn query_post<QParams: Params>(&self, query: &str, params: QParams) -> Result<(), rusqlite::Error> {
+            let mut statement = self.prepare(query)?;
+            let _ = statement.execute(params)?;
+            Ok(())
+        }
+    }
 
     pub trait OrmDataBase: Default {
         fn get_connection(&self) -> &Option<Connection>;
@@ -226,7 +331,7 @@ pub mod db {
                 )),
                 Some(connection) => {
                     let mut statement = connection.prepare(query)?;
-                    let _ = statement.query(params)?;
+                    let _ = statement.execute(params)?;
                     Ok(())
                 }
             }
@@ -247,6 +352,19 @@ pub mod db {
                 .unwrap(),
             )
         }
+
+        fn get_transaction(&mut self) ->  Result<Transaction, rusqlite::Error> {
+            match self.get_connection_mut() {
+                None => Err(rusqlite::Error::SqliteFailure(
+                    Error::new(14),
+                    Some("Probably the connection was not created".to_string()),
+                )),
+                Some(ref mut connection) => {
+                    connection.transaction()
+                }
+            }
+        }
+
 
         fn disconnect(&mut self) {
             *self.get_connection_mut() = None;

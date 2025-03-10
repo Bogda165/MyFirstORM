@@ -35,7 +35,7 @@ struct Users {
     #[connect(Address, address_id)]
     #[connect_type(OneToOne)]
     pub addr: Address,
-    pub some_val: String,
+    pub some_val_that_wont_be_used_in_db: String,
 }
 
 // if One to One create a field address_id, if the connection
@@ -50,7 +50,7 @@ impl Users {
             id: 0,
             text: "".to_string(),
             addr: Address::default(),
-            some_val: "NotNull".to_string()
+            some_val_that_wont_be_used_in_db: "NotNull".to_string()
         }
     }
     pub fn new(_id: i32, _text: String, some_val: String) -> Users {
@@ -58,7 +58,7 @@ impl Users {
             addr: Address::default(),
             id: _id,
             text: _text,
-            some_val,
+            some_val_that_wont_be_used_in_db: some_val,
         }
     }
 }
@@ -90,39 +90,6 @@ impl Address {
         }
     }
 }
-use orm_traits::repo::OrmRepo;
-
-#[derive(Default)]
-struct AddrRepo {
-    db_connection: Option<Connection>,
-    entities: Vec<Address>,
-}
-
-impl AddrRepo {
-
-}
-
-impl OrmRepo<Address> for AddrRepo {
-    fn from_connection(connection: Connection) -> Self {
-        let mut ar = AddrRepo::default();
-        ar.db_connection = Some(connection);
-        ar
-    }
-    fn connect() -> Self
-        where Self:Sized
-    {
-        Self::from_connection(
-            Connection::open_with_flags(
-                "Test_db".to_string(),
-                OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
-            ).unwrap()
-        )
-    }
-
-    fn get_connection(&self) -> &Option<Connection> {
-        &self.db_connection
-    }
-}
 
 #[data_base(users::Users, address::Address)]
 #[name = "Test_db"]
@@ -139,28 +106,19 @@ fn main() {
     let query = query_from!(users::Users).join::<address::Address>(literal(10).less(column(address::id))).select_test(((column(users::id), "hui"), (column(address::id), "hui2")));
 
     let _id = users::id;
-    println!("Inset query {:?}",users.insert_query());
     println!("Create query {}", address::Address::create_query());
     println!("Load query: {}", query.to_query());
 
 
-    let insert_query = Address {
-        id: 10,
-        _address: "prospekt huia".to_string(),
-    }.insert_query();
-
     let mut db_connection = DataBaseTest::default();
     db_connection.connect();
 
-    // let binding = db_connection.connection.unwrap();
-    // let mut binding = binding.prepare("select * from Address;").unwrap();
-    // let mut rows = binding.query([]).unwrap();
-    //
-    // while let Ok(row) = rows.next() {
-    //     println!("{}", row.unwrap().get::<usize, String>(1).unwrap());
-    // }
+    let _vec = vec![Address {
+        id: 10,
+        _address: "one stree".to_string(),
+    }, Address {id: 11, _address: "another street".to_string()}];
 
-
+    Address::insert_iterator(_vec.into_iter(), &mut db_connection);
 
     let select_q = query_from!(Address).select_test(((column(address::id), "hui2"), (column(address::_address), "hui3")));
 
