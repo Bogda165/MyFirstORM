@@ -145,6 +145,7 @@ pub fn orm_table_derive_f(table_name: Ident, mut table: DataStruct) -> TokenStre
     let from_columns = from_columns_fn(&mut table, &table_name);
     let from_sql = from_sql_impl(&table_name);
 
+
     quote! {
         #columns
         #columns_strings

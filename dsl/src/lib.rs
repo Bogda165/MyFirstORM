@@ -33,8 +33,8 @@ mod tables {
     pub mod address {
 
         use rusqlite::types::FromSqlResult;
-use rusqlite::types::ValueRef;
-use crate::table;
+        use rusqlite::types::ValueRef;
+        use crate::table;
 
         #[table]
         struct address {
@@ -49,8 +49,8 @@ use crate::table;
 
     pub mod phone {
         use rusqlite::types::FromSqlResult;
-use rusqlite::types::ValueRef;
-use super::*;
+        use rusqlite::types::ValueRef;
+        use super::*;
 
         #[table]
         struct phone {

@@ -74,7 +74,6 @@ pub fn impl_table((table, table_name): (&mut DataStruct, &Ident), delete_attrs: 
                         |field, attrs_name, attr|{
                                 match &*attrs_name {
                                     "column" =>  {
-
                                         Some(quote! {
                                             pub struct #field_name;
 

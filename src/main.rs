@@ -17,8 +17,12 @@ use crate::users::*;
 use p_macros::OrmTable;
 use orm_traits::{OrmColumn, OrmTable};
 use rusqlite::{Connection, OpenFlags};
+use rusqlite::types::Value;
+use std::any::Any;
 
-#[derive(Default)]
+use load_logic::code::*;
+
+#[derive(Default, Clone)]
 #[table("users")]
 struct Users {
     #[column]
@@ -28,18 +32,30 @@ struct Users {
     #[column]
     #[sql_type(Text)]
     pub text: String,
+    #[connect(Address, address_id)]
+    #[connect_type(OneToOne)]
+    pub addr: Address,
     pub some_val: String,
 }
+
+// if One to One create a field address_id, if the connection
+// if One to Many create nothing
+
+//#[connect_many(Address, "user_id")]
+//#[connect_many_to_many(UsersAddress, Address, "address_id")]
+//#[sql_type(Int)]
 impl Users {
     pub fn default() -> Users {
         Users {
             id: 0,
             text: "".to_string(),
+            addr: Address::default(),
             some_val: "NotNull".to_string()
         }
     }
     pub fn new(_id: i32, _text: String, some_val: String) -> Users {
         Users {
+            addr: Address::default(),
             id: _id,
             text: _text,
             some_val,
@@ -47,7 +63,7 @@ impl Users {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 #[p_macros::table("address")]
 struct Address {
     #[column]
@@ -153,4 +169,5 @@ fn main() {
     db_connection.query_get(&*select_q.to_query(), |row| {
         row.get::<usize, String>(1).unwrap()
     }).into_iter().for_each(|result| {println!("HUI{:?}", result)})
-   }
+
+}

@@ -1,7 +1,10 @@
 [package]
-name = "loh"
+name = "load_logic"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+name = "load_logic"
 
 [dependencies]
 rusqlite = "0.32.1"

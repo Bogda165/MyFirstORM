@@ -1,14 +1,10 @@
-mod code;
+pub mod code;
 
 use std::any::Any;
-use std::collections::HashMap;
 use std::hash::Hash;
-use std::io::ErrorKind::Interrupted;
 use std::ops::Deref;
-use std::os::macos::raw::stat;
-use rusqlite::{Connection, OpenFlags, Row, Statement, ToSql};
-use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef};
-use rusqlite::types::Value::Null;
+use rusqlite::{ToSql};
+use rusqlite::types::{FromSql};
 
 trait INSERTABLE {
     fn for_insert(&self) -> String;
@@ -298,7 +294,7 @@ mod one_to_many {
 
         fn get_by_name(&self, name: &String) -> Value {
             match name.as_str() {
-                "user_id" => Value::Integer(self.user_id as i64),
+                "user_id" => self.user_id.into(),
                 "content" => Value::Text(self.content.clone()),
                 "post_id" => Value::Integer(self.post_id as i64),
                 _ => {
@@ -473,12 +469,12 @@ mod hard_test {
             }
         }
 
-        fn add(&mut self, table_name: TableName, vector: Vec<&Box<dyn DbResponseConv>>) {
+        fn add(&mut self, table_name: TableName, mut vector: Vec<&Box<dyn DbResponseConv>>) {
             match table_name.name.as_str() {
                 "departments" => {
                     assert_eq! {vector.len(), 1}
 
-                    let [department]: [&Box<dyn DbResponseConv>; 1] = vector.try_into().unwrap();
+                    let department: &Box<dyn DbResponseConv> = vector.remove(0);
 
                     let any_obj = department.clone_box().into_any();
                     let department = any_obj.downcast::<Department>().unwrap();
@@ -486,7 +482,7 @@ mod hard_test {
                     self.department = *department
                 }
                 "students" => {
-                    let posts: Vec<Student> = vector.into_iter().map(|obj| {
+                    let posts: Vec<_> = vector.into_iter().map(|obj| {
                         let any_obj = obj.clone_box().into_any();
                         let post = any_obj.downcast::<Student>().unwrap();
                         *post
@@ -562,12 +558,12 @@ mod hard_test {
             }
         }
 
-        fn add(&mut self, table_name: TableName, vector: Vec<&Box<dyn DbResponseConv>>) {
+        fn add(&mut self, table_name: TableName, mut vector: Vec<&Box<dyn DbResponseConv>>) {
             match table_name.name.as_str() {
                 "departments" => {
                     assert_eq! {vector.len(), 1}
 
-                    let [department]: [&Box<dyn DbResponseConv>; 1] = vector.try_into().unwrap();
+                    let department: &Box<dyn DbResponseConv> = vector.remove(0);
 
                     let any_obj = department.clone_box().into_any();
                     let department = any_obj.downcast::<Department>().unwrap();
@@ -586,7 +582,7 @@ mod hard_test {
                 "profiles" => {
                     assert_eq! {vector.len(), 1}
 
-                    let [department]: [&Box<dyn DbResponseConv>; 1] = vector.try_into().unwrap();
+                    let department: &Box<dyn DbResponseConv> = vector.remove(0);
 
                     let any_obj = department.clone_box().into_any();
                     let department = any_obj.downcast::<Profile>().unwrap();
@@ -723,10 +719,4 @@ mod hard_test {
         //
         // println!("{:?}", users);
     }
-}
-
-
-
-fn main() {
-
 }

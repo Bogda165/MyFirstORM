@@ -9,7 +9,7 @@ pub mod repo_struct;
 pub mod additional_functions;
 pub mod new_macros;
 pub mod derive_orm_traits;
-
+pub mod load_funcs;
 
 pub mod custom_parser{
     use proc_macro2::Ident;

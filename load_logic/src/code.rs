@@ -27,25 +27,14 @@ impl ConnectionTable {
 #[derive(Debug)]
 #[derive(Eq, Hash, PartialEq, Clone)]
 pub struct TableName {
-    pub(crate) name: String
+    pub name: String
 }
 
-trait TheType: FromSql + Debug {
-
-}
-
-impl TheType for i32 {}
-impl TheType for String {}
-
-
-
-#[derive(Debug)]
 pub enum LoadType {
     Lazy { addition_query: String },
     PreLoad { table: Vec<Box<dyn DbResponseConv>>, connection_table: Option<ConnectionTable> },
 }
 
-#[derive(Debug)]
 pub struct EntityQuery2<'a> {
     pub query: Statement<'a>,
     pub load: LoadType,
@@ -151,7 +140,7 @@ impl EntityQuery<'_> {
 
  */
 
-pub trait DbResponseConv: std::fmt::Debug + Any {
+pub trait DbResponseConv: Any {
     fn default_obj(&self) -> Box<dyn DbResponseConv>;
     fn from_response(&self, row: &Row) -> Box<dyn DbResponseConv>;
     //fn fill_fk(&mut self, table_name: &TableName, query_table: &mut EntityQuery2<'_>);

@@ -665,10 +665,10 @@ use super::*;
                             .equal(literal(9898))
                     )
             )
-        .select_test(select!(users::name as "name", phone::number as "street_address", address::street));
+        .select_test(select!(users::name as "name", phone::number as "number", address::street));
 
         println!("{}", query.to_query());
-        assert_eq!(0, 1);
+        assert_eq!(24242, 1);
     }
 
 }

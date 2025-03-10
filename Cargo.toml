@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 rusqlite = "0.32.1"
-Db_shit = {path = "Db_shit"}
 p_macros = {path = "p_macros"}
 dsl = {path = "dsl"}
 orm_traits = {path = "orm_traits"}
+load_logic = {path = "load_logic"}
