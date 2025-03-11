@@ -2,8 +2,8 @@ use crate::literals::*;
 use crate::operators::NULLsExpression;
 use crate::column::RawColumn;
 
-pub trait TheType {
-    type Type;
+pub trait TheType: Clone {
+    type Type: Clone;
 }
 
 

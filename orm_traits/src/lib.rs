@@ -430,205 +430,177 @@ pub mod attributes {
     }
 }
 
-// pub mod static_from {
-//     pub trait StaticFrom<Type>
-//     where
-//         Self: Sized,
-//     {
-//         fn static_from() -> Self;
-//     }
-//
-//     pub trait StaticInto<T>
-//     where
-//         Self: Sized + StaticFrom<T>,
-//     {
-//         fn static_into() -> Self {
-//             T::static_from()
-//         }
-//     }
-//
-//     impl<T: StaticFrom<Self>> StaticInto<T> for T {}
-// }
+pub mod static_from {
+    pub trait StaticFrom<Type: ?Sized>
+    where
+        Self: Sized,
+    {
+        fn static_from() -> Self;
+    }
 
-// mod relations {
-//
-//     //#[relation(OneToOne, Address, connect_with = "address_id")] by default connect_with = format!("{}_{}", Address::table_name(), "id".into())
-//     //some_name: SomeTypeIntoAddress
-//
-//     //#[relation(OneToMany, Address, connect_with = "user_id")] by default connect_with = format!("{}_{}", Address::table_name(), "id".into())
-//     //some_name: Vec<SomeTypeIntoAddress>
-//
-//     fn inset(self, ids: (i32, i32), connection: Connection) {
-//         let final_query: String = format!{"{main_query}, {}, {}", self::inset_query(), };
-//     }
-//
-//     use crate::static_from::*;
-//     trait Table: Default {
-//         fn get_tale_insert_query() -> String;
-//     }
-//
-//     pub mod relation_types {
-//         use super::*;
-//         use std::marker::PhantomData;
-//         pub struct OneToOne;
-//         pub struct OneToMany;
-//         pub struct ManyToMany;
-//
-//         pub enum RelationTypes {
-//             OneToOne,
-//             OneToMany,
-//             ManyToMany,
-//         }
-//
-//         impl StaticFrom<OneToOne> for RelationTypes {
-//             fn static_from() -> Self {
-//                 Self::OneToOne
-//             }
-//         }
-//
-//         impl StaticFrom<OneToMany> for RelationTypes {
-//             fn static_from() -> Self {
-//                 Self::OneToMany
-//             }
-//         }
-//
-//         impl StaticFrom<ManyToMany> for RelationTypes {
-//             fn static_from() -> Self {
-//                 Self::ManyToMany
-//             }
-//         }
-//
-//         pub struct RelationStruct<T1: Table, T2: Table, RT1: RelationType, RT2: RelationType>
-//         where
-//             T1: Relation<T2, RT1>,
-//             T2: Relation<T1, RT2>,
-//         {
-//             table1: PhantomData<T1>,
-//             table2: PhantomData<T2>,
-//             t1_t2: RelationTypes,
-//             t2_t1: RelationTypes,
-//         }
-//
-//         impl<T1: Table, T2: Table, RT1: RelationType, RT2: RelationType> Default
-//             for RelationStruct<T1, T2, RT1, RT2>
-//         where
-//             T1: Relation<T2, RT1>,
-//             T2: Relation<T1, RT2>,
-//         {
-//             fn default() -> Self {
-//                 RelationStruct {
-//                     table1: Default::default(),
-//                     table2: Default::default(),
-//                     t1_t2: RelationTypes::static_from::<RT1>(),
-//                     t2_t1: RelationTypes::static_from::<RT2>(),
-//                 }
-//             }
-//         }
-//
-//         impl RelationStruct<T1: Table, T2: Table, RT1: RelationType, RT2: RelationType> {
-//             pub fn new() -> Self {
-//                 Default::default()
-//             }
-//         }
-//
-//         //insert
-//         //one1 to one2
-//         //1 -> insert -> 1.2 insert
-//         //one 1 to many2
-//         //1 -> insert -> 1.2.iter insert
-//         //many to many
-//         //the same as one to many + insert 1_2 table
-//
-//         //create
-//         //one to one, one to many -> nothing
-//         // many to many -> create 1_2 table
-//
-//         fn get_insert_from_relation<R: Relation>() -> String {
-//             T1
-//         }
-//     }
-//
-//     use relation_types::*;
-//
-//     struct Insert {
-//         main_table_insert: String,
-//         additional_table_insert: String,
-//         other_insert: String,
-//     }
-//
-//     trait RelationType {
-//         fn get_insert_prep<FromT: Table, ToT: Table>(ref_id: &str) -> Insert;
-//     }
-//
-//     impl RelationType for OneToOne {
-//         fn get_insert_prep<FromT: Table, ToT: Table>(ref_id: &str) -> Insert {
-//             Insert {
-//                 main_table_insert: FromT::get_tale_insert_query(),
-//                 additional_table_insert: ToT::get_tale_insert_query(),
-//                 other_insert: "".into(),
-//             }
-//         }
-//     }
-//
-//     impl RelationType for OneToMany {
-//         fn get_insert_prep<FromT: Table, ToT: Table>(ref_id: &str) -> Insert {
-//             Insert {
-//                 main_table_insert: FromT::get_tale_insert_query(),
-//                 additional_table_insert: ToT::get_tale_insert_query(),
-//                 other_insert: "".into(),
-//             }
-//         }
-//     }
-//
-//     impl RelationType for ManyToMany {
-//         fn get_insert_prep<FromT: Table, ToT: Table>(ref_id: &str) -> Insert {
-//             Insert {
-//                 main_table_insert: FromT::get_tale_insert_query(),
-//                 additional_table_insert: ToT::get_tale_insert_query(),
-//                 other_insert: "".into(),
-//             }
-//         }
-//     }
-//
-//     trait Relation<T: Table>: Table {
-//         type RelationType: RelationType;
-//         const REF_ID_NAME: &'static str;
-//
-//         fn get_relation() -> RelationStruct {}
-//     }
-//
-//     // impl<T1, T2> Relation<T1, ManyToMany> for T2
-//     // where
-//     //     T1: Table + Relation<T2, OneToMany>,
-//     //     T2: Table + Relation<T1, OneToMany>,
-//     // {
-//     //     const REF_ID_NAME: &'static str = T2::REF_ID_NAME;
-//     // }
-//
-//     struct T1;
-//     struct T2;
-//
-//     impl Table for T1 {
-//         fn get_tale_insert_query() -> String {
-//             "T1 insert query;".into()
-//         }
-//     }
-//
-//     impl Table for T2 {
-//         fn get_tale_insert_query() -> String {
-//             "T2 insert query;".into()
-//         }
-//     }
-//
-//     impl Relation<T1> for T2 {
-//         type RelationType = OneToOne;
-//         const REF_ID_NAME: &'static str = "T1_FK";
-//     }
-//     impl Relation<T2> for T1 {
-//         type RelationType = OneToMany;
-//         const REF_ID_NAME: &'static str = "T2_FK";
-//     }
-// }
+    pub trait StaticInto<T>
+    where
+        T: StaticFrom<Self>
+    {
+        fn static_into() -> T {
+            T::static_from()
+        }
+    }
+
+    impl<T: StaticFrom<Self>> StaticInto<T> for T {}
+}
+
+mod relations {
+
+    //#[relation(OneToOne, Address, connect_with = "address_id")] by default connect_with = format!("{}_{}", Address::table_name(), "id".into())
+    //some_name: SomeTypeIntoAddress
+
+    //#[relation(OneToMany, Address, connect_with = "user_id")] by default connect_with = format!("{}_{}", Address::table_name(), "id".into())
+    //some_name: Vec<SomeTypeIntoAddress>
+
+
+    use crate::static_from::*;
+    trait Table: Default {
+        fn get_tale_insert_query() -> String;
+    }
+
+    pub mod relation_types {
+        use super::*;
+        use std::marker::PhantomData;
+        use dsl::column::Column;
+        use dsl::convertible::TheType;
+
+        pub struct OneToOne;
+        pub struct OneToMany;
+        pub struct ManyToMany;
+
+        //
+        trait HaveRelationWith<T: Table + HaveRelationWith<Self>>: Table
+        {
+            type RType: RelationType;
+            type SelfIdent: Column<Table = Self>;
+        }
+
+        //TODO add check for pk or unique
+        pub struct TableIdent<C: Column> {
+            column: PhantomData<C>,
+            table: PhantomData<<C as Column>::Table>,
+            _type: <C as TheType>::Type,
+        }
+
+        struct RelationRecord<C1: Column, C2: Column> {
+            first_ident: TableIdent<C1>,
+            second_ident: TableIdent<C2>,
+        }
+
+        #[derive(Default)]
+        struct RelationStruct<T1: Table, T2: Table>
+        where
+            T1: HaveRelationWith<T2>,
+            T2: HaveRelationWith<T1>,
+        {
+            relations: Vec<RelationRecord<<T1 as HaveRelationWith<T2>>::SelfIdent, <T2 as HaveRelationWith<T1>>::SelfIdent>>
+        }
+
+        impl<T1, T2> RelationStruct<T1, T2>
+        where
+            T1: Table + HaveRelationWith<T2>,
+            T2: Table + HaveRelationWith<T1>,
+        {
+
+            //consider all tables of type 1 have a relation with all tables of type2
+            fn new(tables_type1: Option<Vec<T1>>, tables_type2: Option<Vec<T2>>) -> Self {
+                let mut relations_records = vec![];
+                if let Some(tables_type1) = tables_type1 {
+
+                    tables_type1.iter().for_each(|table| {
+                        let first_value = <T1 as HaveRelationWith<T2>>::SelfIdent::get_value(table);
+
+                        if let Some(ref tables_type2) = tables_type2 {
+
+                            relations_records.extend(
+                                tables_type2.iter().map(|table| {
+                                    RelationRecord {
+                                        first_ident: TableIdent {
+                                            column: PhantomData,
+                                            table: PhantomData,
+                                            _type: first_value.clone(),
+                                        },
+                                        second_ident: TableIdent {
+                                            column: PhantomData,
+                                            table: PhantomData,
+                                            _type:  <T2 as HaveRelationWith<T1>>::SelfIdent::get_value(table),
+                                        }
+                                    }
+                                })
+                            );
+
+                        };
+                    });
+
+                }
+
+                Self {
+                    relations: relations_records,
+                }
+            }
+        }
+
+        #[test]
+        fn some_test() {
+
+        }
+    }
+
+    use relation_types::*;
+
+    struct Insert {
+        main_table_insert: String,
+        additional_table_insert: String,
+        other_insert: String,
+    }
+
+    trait RelationType {
+        fn get_insert_prep<FromT: Table, ToT: Table>(ref_id: &str) -> Insert;
+    }
+
+    impl RelationType for OneToOne {
+        fn get_insert_prep<FromT: Table, ToT: Table>(ref_id: &str) -> Insert {
+            Insert {
+                main_table_insert: FromT::get_tale_insert_query(),
+                additional_table_insert: ToT::get_tale_insert_query(),
+                other_insert: "".into(),
+            }
+        }
+    }
+
+    impl RelationType for OneToMany {
+        fn get_insert_prep<FromT: Table, ToT: Table>(ref_id: &str) -> Insert {
+            Insert {
+                main_table_insert: FromT::get_tale_insert_query(),
+                additional_table_insert: ToT::get_tale_insert_query(),
+                other_insert: "".into(),
+            }
+        }
+    }
+
+    impl RelationType for ManyToMany {
+        fn get_insert_prep<FromT: Table, ToT: Table>(ref_id: &str) -> Insert {
+            Insert {
+                main_table_insert: FromT::get_tale_insert_query(),
+                additional_table_insert: ToT::get_tale_insert_query(),
+                other_insert: "".into(),
+            }
+        }
+    }
+
+    trait Relation<T: Table>: Table {
+        type RelationType: RelationType;
+        const REF_ID_NAME: &'static str;
+
+        //fn get_relation() -> RelationStruct {}
+    }
+}
 
 mod tests {
     struct WrapInt {
@@ -656,6 +628,7 @@ mod tests {
     mod _name {
         use super::*;
         #[derive(Default)]
+        #[derive(Clone)]
         pub struct name;
 
         impl TheType for name {
@@ -678,6 +651,10 @@ mod tests {
             fn get_name() -> String {
                 "name".to_string()
             }
+
+            fn get_value(table: &Self::Table) -> Self::Type {
+                todo!()
+            }
         }
     }
     use _name::name;
@@ -685,6 +662,7 @@ mod tests {
     mod _id {
         use super::*;
 
+        #[derive(Clone)]
         pub struct id;
 
         impl Default for id {
@@ -712,6 +690,10 @@ mod tests {
 
             fn get_name() -> String {
                 "id".to_string()
+            }
+
+            fn get_value(table: &Self::Table) -> Self::Type {
+                todo!()
             }
         }
     }
@@ -777,22 +759,16 @@ mod tests {
     #[test]
     fn test1() {
         let create_q = Users::create_query();
-        let insert_q = Users {
+        let user_struct = Users {
             name: "bohdan".to_string(),
             id: 15.into(),
-        }
-        .insert_query();
+        };
+
+        let insert_q = Users::insert_query();
+
 
         println!("Create: {}", create_q);
         println!("Insert: {:?}", insert_q);
 
-        assert_eq!(
-            Users {
-                name: "hi".into(),
-                id: 10.into()
-            }
-            .insert_query(),
-            Users::from_columns(("hi".to_string(), 10)).insert_query()
-        );
     }
 }

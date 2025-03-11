@@ -75,6 +75,7 @@ pub fn impl_table((table, table_name): (&mut DataStruct, &Ident), delete_attrs: 
                                 match &*attrs_name {
                                     "column" =>  {
                                         Some(quote! {
+                                            #[derive(Clone)]
                                             pub struct #field_name;
 
                                             impl Default for #field_name {
@@ -97,6 +98,10 @@ pub fn impl_table((table, table_name): (&mut DataStruct, &Ident), delete_attrs: 
                                                 fn get_name() -> String {
                                                     #field_name_string.to_string()
                                                 }
+
+                                                fn get_value(table: &Self::Table) -> Self::Type {
+                                                    table.#field_name.clone().into()
+                                                }
                                             }
                                         })
                                     }
@@ -112,12 +117,6 @@ pub fn impl_table((table, table_name): (&mut DataStruct, &Ident), delete_attrs: 
                                         let type_ident = indents[0].clone();
 
                                         let real_type_ident = TempData::new().attr_type[&*type_ident.to_string()].clone();
-
-                                        eprintln!("{}", quote!{
-                                            impl TheType for #field_name {
-                                                type Type = #real_type_ident;
-                                            }
-                                        });
 
                                         Some(quote!{
                                             impl TheType for #field_name {

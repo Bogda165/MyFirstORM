@@ -21,6 +21,8 @@ pub trait Column: Default + TheType + Into<RawTypes>{
     const FULL_NAME: &'static str;
 
     fn get_name() -> String;
+
+    fn get_value(table: &Self::Table) -> Self::Type;
 }
 
 /// Trait that is used for compile time check, of availability of the column in table group

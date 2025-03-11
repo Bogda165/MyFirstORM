@@ -520,7 +520,7 @@ use super::*;
             #[table]
             struct table2 {
                 #[column]
-                #[sql_type(Int)]
+                #[sql_type(Real)]
                 id: f32,
                 #[column]
                 #[sql_type(Text)]
@@ -536,7 +536,7 @@ use super::*;
             #[table]
             struct table3 {
                 #[column]
-                #[sql_type(Int)]
+                #[sql_type(Real)]
                 id: f32,
                 #[column]
                 #[sql_type(Text)]
