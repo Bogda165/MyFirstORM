@@ -34,7 +34,7 @@ fn create_columns_from_row(mut table: DataStruct) -> TokenStream2{
     }
 }
 
-enum ConnectionType {
+pub(crate) enum ConnectionType {
     OneToOne,
     OneToMany,
     ManyToMany,

@@ -10,6 +10,7 @@ pub mod additional_functions;
 pub mod new_macros;
 pub mod derive_orm_traits;
 pub mod load_funcs;
+mod relations;
 
 pub mod custom_parser{
     use proc_macro2::Ident;

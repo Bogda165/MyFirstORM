@@ -34,8 +34,9 @@ struct Users {
     #[column]
     #[sql_type(Text)]
     pub text: String,
-    #[connect(Address, address_id)]
-    #[connect_type(OneToOne)]
+    #[relation(Address, address::table1)]
+    #[relation_type = OneToMany]
+    #[self_ident(users::id, Int)]
     pub addr: Address,
     pub some_val_that_wont_be_used_in_db: String,
 }
@@ -46,6 +47,97 @@ struct Users {
 //#[connect_many(Address, "user_id")]
 //#[connect_many_to_many(UsersAddress, Address, "address_id")]
 //#[sql_type(Int)]
+// when one to one realtion create a column
+
+/// one to many
+///
+/// ```
+/// #[table("hui")]
+/// struct Table1{
+///     #[column]
+///     #[sql_type(Int)]
+///     id: i32,
+///     #[relation(table = Address, by = address::table1)]
+///     #[relation_type = OneToMany]
+///     #[self_ident(table1::id)]
+///     #[sql_type(Int)]
+///     addrs: Vec<Address>
+/// }
+/// #[table("hui2)"]
+/// struct Address {
+///     #[column]
+///     #[sql_type(String)]
+///     id: String,
+///     #[relation(table = Table1, by = table1::id]
+///     #[relation_type = OneToOne]
+///     #[self_ident(table1)]
+///     #[sql_type(Int)]
+///     table1: Table1
+/// }
+/// ```
+///
+/// one to one
+///
+/// ```
+/// #[table("hui")]
+/// struct Table1{
+///     #[column]
+///     #[sql_type(Int)]
+///     id: i32,
+///     #[relation(table = Address, by = address::id)]
+///     #[relation_type = OneToOne]
+///     #[self_ident(addr)]
+///     #[sql_type(String)]
+///     addr: Address
+/// }
+/// #[table("hui2)"]
+/// struct Address {
+///     #[column]
+///     #[sql_type(String)]
+///     id: String,
+///     #[column]
+///     #[sal_type(String)]
+///     street: StreetName,
+/// }
+/// ```
+///
+/// /// many to many
+///
+/// ```
+/// #[table("connect_huis")]
+/// struct Huis {
+///     #[column]
+///     #[sql_type(Int)]
+///     address_id: String,
+///     #[column]
+///     #[sql_type(String)]
+///     table1_id: i32
+/// }
+///
+/// #[table("hui")]
+/// struct Table1{
+///     #[column]
+///     #[sql_type(Int)]
+///     id: i32,
+///     #[relation(table = Huis)]
+///     #[relation_type = ManyToMany]
+///     #[self_ident(id)]
+///     #[sql_type(Int)]
+///     addrs: Vec<Address>
+/// }
+///
+/// #[table("hui2)"]
+/// struct Address {
+///     #[column]
+///     #[sql_type(String)]
+///     id: String,
+///     #[relation(table = Huis)]
+///     #[relation_type = ManyToMany]
+///     #[self_ident(id)]
+///     #[sql_type(String)]
+///     table1: Table1
+/// }
+ /// ```
 impl Users {
     pub fn default() -> Users {
         Users {

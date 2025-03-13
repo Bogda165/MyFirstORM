@@ -73,7 +73,7 @@ struct InsertQuerySignature {
 
 
 impl InsertQuerySignature {
-    
+
     fn new(main_query: String, values_template: String) -> Self {
         Self {
             main_query,
@@ -349,7 +349,7 @@ pub mod db {
                     Self::get_name(),
                     OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
                 )
-                .unwrap(),
+                    .unwrap(),
             )
         }
 
@@ -395,7 +395,7 @@ pub mod db {
                     "DataBaseTest",
                     OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
                 )
-                .unwrap(),
+                    .unwrap(),
             );
         }
     }
@@ -480,10 +480,11 @@ pub mod relations {
         impl RelationType for ManyToMany {}
 
         //
-        pub trait HaveRelationWith<T: Table + HaveRelationWith<Self, RT>, RT>: Table + Sized
+        pub trait HaveRelationWith<T: Table, RT>: Table + Sized
         {
             type RType: RelationType;
             type SelfIdent: Column<Table = Self, Type = RT>;
+            type Ref: Column<Table = T, Type = RT>;
         }
 
         //TODO add check for pk or unique
@@ -505,12 +506,11 @@ pub mod relations {
         }
 
         #[derive(Default, Debug)]
-        pub struct RelationStruct<T1: Table, T2: Table, TR>
+        pub struct RelationStruct<T1: Table, T2: Table, TR1>
         where
-            T1: HaveRelationWith<T2, TR>,
-            T2: HaveRelationWith<T1, TR>,
+            T1: HaveRelationWith<T2, TR1>,
         {
-            relations: Vec<RelationRecord<<T1 as HaveRelationWith<T2, TR>>::SelfIdent, <T2 as HaveRelationWith<T1, TR>>::SelfIdent>>
+            relations: Vec<RelationRecord<<T1 as HaveRelationWith<T2, TR1>>::SelfIdent, <T1 as HaveRelationWith<T2, TR1>>::Ref>>
         }
 
 
@@ -518,22 +518,20 @@ pub mod relations {
             use std::ops::DerefMut;
             use super::*;
 
-            impl<T1, T2, TR> Deref for RelationStruct<T1, T2, TR>
+            impl<T1, T2, TR1> Deref for RelationStruct<T1, T2, TR1>
             where
-                T1: Table + HaveRelationWith<T2, TR>,
-                T2: Table + HaveRelationWith<T1, TR>,
+                T1: Table + HaveRelationWith<T2, TR1>, T2: dsl::column::Table
             {
-                type Target = Vec<RelationRecord<<T1 as HaveRelationWith<T2, TR>>::SelfIdent, <T2 as HaveRelationWith<T1, TR>>::SelfIdent>>;
+                type Target = Vec<RelationRecord<<T1 as HaveRelationWith<T2, TR1>>::SelfIdent, <T1 as HaveRelationWith<T2, TR1>>::Ref>>;
 
                 fn deref(&self) -> &Self::Target {
                     &self.relations
                 }
             }
 
-            impl<T1, T2, TR> DerefMut for RelationStruct<T1, T2, TR>
+            impl<T1, T2, TR1> DerefMut for RelationStruct<T1, T2, TR1>
             where
-                T1: Table + HaveRelationWith<T2, TR>,
-                T2: Table + HaveRelationWith<T1, TR>,
+                T1: Table + HaveRelationWith<T2, TR1>, T2: dsl::column::Table
             {
                 fn deref_mut(&mut self) -> &mut Self::Target {
                     &mut self.relations
@@ -542,10 +540,10 @@ pub mod relations {
         }
 
 
-    impl<T1, T2, TR> RelationStruct<T1, T2, TR>
+        impl<T1, T2, TR1> RelationStruct<T1, T2, TR1>
         where
-            T1: Table + HaveRelationWith<T2, TR>,
-            T2: Table + HaveRelationWith<T1, TR>, TR: std::cmp::PartialEq + Clone
+            T1: Table + HaveRelationWith<T2, TR1>,
+            TR1: std::cmp::PartialEq + Clone, T2: dsl::column::Table
         {
 
             //consider all tables of type 1 have a relation with all tables of type2
@@ -555,13 +553,13 @@ pub mod relations {
 
                     tables_type1.iter().for_each(|table| {
                         //сheck if the value is the same -> add to the record
-                        let first_key = <T1 as HaveRelationWith<T2, TR>>::SelfIdent::get_value(table);
+                        let first_key = <T1 as HaveRelationWith<T2, TR1>>::SelfIdent::get_value(table);
 
                         if let Some(ref tables_type2) = tables_type2 {
 
                             relations_records.extend(
                                 tables_type2.iter().filter_map(|table| {
-                                    let second_key = <T2 as HaveRelationWith<T1, TR>>::SelfIdent::get_value(table);
+                                    let second_key = <T1 as HaveRelationWith<T2, TR1>>::Ref::get_value(table);
 
                                     if first_key == second_key {
                                         Some(RelationRecord {
@@ -672,7 +670,7 @@ mod tests {
         #[derive(Default)]
         #[derive(Clone)]
         #[derive(Debug)]
-pub struct name;
+        pub struct name;
 
         impl TheType for name {
             type Type = String;
@@ -707,7 +705,7 @@ pub struct name;
 
         #[derive(Clone)]
         #[derive(Debug)]
-pub struct id;
+        pub struct id;
 
         impl Default for id {
             fn default() -> Self {

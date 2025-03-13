@@ -7,6 +7,7 @@ use crate::new_macros::table_def::impl_table;
 use crate::additional_functions::functions::orm_table_derive_f;
 use crate::additional_functions::functions::attrs_to_comments_f;
 use crate::load_funcs::load_funcs;
+use crate::relations::impl_relations_func;
 
 pub fn create_macro(mut input: DeriveInput, shadow_table_name_i: Ident, name: Ident, shadow_table_name: LitStr) -> proc_macro2::TokenStream {
     let data = match input.data {
@@ -23,8 +24,10 @@ pub fn create_macro(mut input: DeriveInput, shadow_table_name_i: Ident, name: Id
     let construct_table_s = create_construct_table(&data);
 
     let impl_table = impl_table((data, &name), false, quote!{});
+    let impl_relations = impl_relations_func(input.clone());
     let impl_orm_table = orm_table_derive_f(input.clone());
     let impl_loading_part = load_funcs(input.clone());
+
 
     attrs_to_comments_f(&mut input);
     
@@ -53,6 +56,7 @@ pub fn create_macro(mut input: DeriveInput, shadow_table_name_i: Ident, name: Id
             #impl_table
             #impl_orm_table
             #impl_loading_part
+            #impl_relations
 
             impl FromSql for #table_name {
                 fn column_result(value: ValueRef) -> FromSqlResult<Self> {

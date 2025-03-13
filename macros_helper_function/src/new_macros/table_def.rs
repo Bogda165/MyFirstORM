@@ -3,7 +3,8 @@ use quote::quote;
 use syn::{Data, DataStruct, DeriveInput, Field, Path, PathSegment, Token, Type};
 use syn::__private::TokenStream2;
 use syn::punctuated::Punctuated;
-use crate::additional_functions::functions::iter_through_attrs;
+use crate::additional_functions::functions::{get_inside_attrs, iter_through_attrs};
+use crate::load_funcs::ConnectionType;
 use crate::meta_data::{MetaData, TempData};
 
 fn get_last_ident(path: &Path) -> Option<&Ident> {
@@ -129,6 +130,7 @@ pub fn impl_table((table, table_name): (&mut DataStruct, &Ident), delete_attrs: 
                                     }
                                 }
                         });
+
 
                 quote! {
                     #(#opened_attrs)*
