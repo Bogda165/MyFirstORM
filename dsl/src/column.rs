@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crate::convertible::TheType;
 use crate::queryable::{AutoQueryable, Queryable};
 use crate::expressions::raw_types::RawTypes;
@@ -14,7 +15,7 @@ impl Table for () {
 }
 
 /// Trait of a column in the table, impl using #[table] macro, and attribute #[column]
-pub trait Column: Default + TheType + Into<RawTypes>{
+pub trait Column: Default + TheType + Into<RawTypes> + Debug{
     /// Type of the columns table
     type Table;
 

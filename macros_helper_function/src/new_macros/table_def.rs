@@ -75,7 +75,7 @@ pub fn impl_table((table, table_name): (&mut DataStruct, &Ident), delete_attrs: 
                                 match &*attrs_name {
                                     "column" =>  {
                                         Some(quote! {
-                                            #[derive(Clone)]
+                                            #[derive(Clone, Debug)]
                                             pub struct #field_name;
 
                                             impl Default for #field_name {

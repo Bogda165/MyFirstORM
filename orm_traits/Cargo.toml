@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 dsl = {path = "../dsl"}
+p_macros = {path = "../p_macros"}
 rusqlite = "0.32.1"

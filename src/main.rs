@@ -1,3 +1,5 @@
+mod example;
+
 extern crate alloc;
 
 use orm_traits::db::OrmDataBase;

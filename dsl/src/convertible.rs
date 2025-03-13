@@ -1,9 +1,10 @@
+use std::fmt::Debug;
 use crate::literals::*;
 use crate::operators::NULLsExpression;
 use crate::column::RawColumn;
 
 pub trait TheType: Clone {
-    type Type: Clone;
+    type Type: Clone + Debug;
 }
 
 
