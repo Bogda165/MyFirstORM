@@ -1,23 +1,23 @@
 extern crate alloc;
 
-use orm_traits::db::OrmDataBase;
 use dsl::column::{Allowed, Table};
-use dsl::query::the_query::Query;
 use dsl::convertible::TheType;
-use dsl::{from, from_tables, query_from};
+use dsl::query::the_query::Query;
 use dsl::queryable::Queryable;
 use dsl::safe_expressions::{column, literal};
-use p_macros::{repo, attrs_to_comments, data_base};
-use p_macros::table;
-use rusqlite::{params, Error, Params, Row};
+use dsl::{from, from_tables, query_from};
 use orm_traits::attributes::*;
+use orm_traits::db::OrmDataBase;
+use p_macros::table;
+use p_macros::{attrs_to_comments, data_base, repo};
+use rusqlite::{params, Error, Params, Row};
 
 use crate::address::*;
 use crate::users::*;
-use p_macros::OrmTable;
 use orm_traits::{OrmColumn, OrmTable};
-use rusqlite::{Connection, OpenFlags};
+use p_macros::OrmTable;
 use rusqlite::types::Value;
+use rusqlite::{Connection, OpenFlags};
 use std::any::Any;
 
 use load_logic::code::*;
@@ -50,7 +50,7 @@ impl Users {
             id: 0,
             text: "".to_string(),
             addr: Address::default(),
-            some_val: "NotNull".to_string()
+            some_val: "NotNull".to_string(),
         }
     }
     pub fn new(_id: i32, _text: String, some_val: String) -> Users {
@@ -74,7 +74,6 @@ struct Address {
     pub _address: String,
 }
 
-
 impl Address {
     pub fn new(addr: String) -> Self {
         Address {
@@ -86,7 +85,7 @@ impl Address {
     pub fn default() -> Self {
         Address {
             id: 0,
-            _address: "".to_string()
+            _address: "".to_string(),
         }
     }
 }
@@ -98,9 +97,7 @@ struct AddrRepo {
     entities: Vec<Address>,
 }
 
-impl AddrRepo {
-
-}
+impl AddrRepo {}
 
 impl OrmRepo<Address> for AddrRepo {
     fn from_connection(connection: Connection) -> Self {
@@ -109,13 +106,15 @@ impl OrmRepo<Address> for AddrRepo {
         ar
     }
     fn connect() -> Self
-        where Self:Sized
+    where
+        Self: Sized,
     {
         Self::from_connection(
             Connection::open_with_flags(
                 "Test_db".to_string(),
                 OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE,
-            ).unwrap()
+            )
+            .unwrap(),
         )
     }
 
@@ -127,27 +126,25 @@ impl OrmRepo<Address> for AddrRepo {
 #[data_base(users::Users, address::Address)]
 #[name = "Test_db"]
 #[from(users::Users, address::Address)]
-struct DataBaseTest {
-
-}
-
+struct DataBaseTest {}
 
 fn main() {
-
     let users = Users::from_columns((10, "name".to_string()));
 
-    let query = query_from!(users::Users).join::<address::Address>(literal(10).less(column(address::id))).select_test(((column(users::id), "hui"), (column(address::id), "hui2")));
+    let query = query_from!(users::Users)
+        .join::<address::Address>(literal(10).less(column(address::id)))
+        .select_test(((column(users::id), "hui"), (column(address::id), "hui2")));
 
     let _id = users::id;
-    println!("Inset query {:?}",users.insert_query());
+    println!("Inset query {:?}", users.insert_query());
     println!("Create query {}", address::Address::create_query());
     println!("Load query: {}", query.to_query());
-
 
     let insert_query = Address {
         id: 10,
         _address: "prospekt huia".to_string(),
-    }.insert_query();
+    }
+    .insert_query();
 
     let mut db_connection = DataBaseTest::default();
     db_connection.connect();
@@ -160,14 +157,17 @@ fn main() {
     //     println!("{}", row.unwrap().get::<usize, String>(1).unwrap());
     // }
 
-
-
-    let select_q = query_from!(Address).select_test(((column(address::id), "hui2"), (column(address::_address), "hui3")));
+    let select_q = query_from!(Address).select_test((
+        (column(address::id), "hui2"),
+        (column(address::_address), "hui3"),
+    ));
 
     println!("{}", select_q.to_query());
 
-    db_connection.query_get(&*select_q.to_query(), |row| {
-        row.get::<usize, String>(1).unwrap()
-    }).into_iter().for_each(|result| {println!("HUI{:?}", result)})
-
+    db_connection
+        .query_get(&*select_q.to_query(), |row| {
+            row.get::<usize, String>(1).unwrap()
+        })
+        .into_iter()
+        .for_each(|result| println!("HUI{:?}", result))
 }
