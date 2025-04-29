@@ -11,7 +11,6 @@ SQLiteWrapper is a Rust project that provides an ORM (Object-Relational Mapping)
 - Define tables and relationships using macros.
 - Generate SQL queries from Rust code.
 - Support for one-to-one, one-to-many, and many-to-many relationships.
-- Automatic generation of database schema.
 
 ## Getting Started
 
@@ -96,12 +95,10 @@ fn main() {
     let users = Users::from_columns((10, "name".to_string()));
     let query = query_from!(users::Users)
         .join::<address::Address>(literal(10).less(column(address::id)))
-        .select_test(((column(users::id), "hui"), (column(address::id), "hui2")));
+        .select_test(((column(users::id), "val"), (column(address::id), "val2")));
 
     println!("Load query: {}", query.to_query());
 }
 ```
-
-This `README.md` provides an overview of your project, including features, installation instructions, usage examples, and licensing information. Adjust the content as needed to better fit your project specifics.
 
 ## [DSL](dsl/README.md)
